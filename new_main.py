@@ -51,7 +51,7 @@ if __name__ == "__main__":
     '''
     07/02/2025 - Improved path strings, should resolve permission error alongside writing to csv. If this code still break, use os.chmod 664
     '''
-    for file in os.listdir(input_directory):
+    for file in tqdm(os.listdir(input_directory)):
 
         image_path = os.path.join(input_directory, file).replace('\\', '/')
         print(file)
