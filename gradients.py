@@ -41,12 +41,15 @@ for j in range(len(signs)):
 
     diffs.append(diff)
 
-infls = np.where(diffs)
+infls = np.where(diffs)[0]
 
+infls_points = np.array([arr[0][infls], arr[1][infls]])
 print(gradients)
 print(signs)
 print(diffs)
-print(infls[0])
+print(infls)
+print(infls_points)
+
 print(negative_to_positive_list)
 plt.plot(arr[0], arr[1])
 plt.show()

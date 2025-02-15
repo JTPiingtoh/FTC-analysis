@@ -47,8 +47,8 @@ def trim_roi_polygon(
 
 
 def calculated_medium_x(
-        roi_polygon: Polygon
-) -> tuple[tuple[int,int], bool]:
+        roi: Polygon| np.ndarray 
+) -> tuple[int,int]:
     ''' 
 Finds central point by attempting to find closest inflection points. 
 If abnormal inflection points are detected, anaylsis still continues, but image is flagged for review.
@@ -56,13 +56,68 @@ Returns central coordinate, and flag bool.
 '''
     # adapted from https://stackoverflow.com/questions/62537703/how-to-find-inflection-point-in-python
     # TODO: Find list of coords with negative curve
-    roi_exterior = roi_polygon.exterior
-    coords = np.asarray(roi_exterior.coords.xy)
+
+    if isinstance(roi, Polygon):
+        roi_exterior = roi.exterior
+        coords = np.asarray(roi_exterior.coords.xy)
+    else:
+        assert isinstance(roi, np.ndarray)
+        coords = roi
+
+    gradients = []
+    signs = []
+    for i in range(1, coords.shape[1]):
+        x2 = coords[0][i]
+        y2 = coords[1][i]
+
+        x1 = coords[0][i-1]
+        y1 = coords[1][i-1]
+        
+        dx = x2 - x1 
+        dy = y2 - y1
+
+        if dx == 0:
+
+            if dy < 0:
+                gradient = np.inf
+
+            elif dy > 0:
+                gradient = -np.inf
+            else: # if dy == 0
+                gradient = gradients[j-1]
+
+        else:
+            gradient = (y2 - y1) / dx
+        
+        gradients.append(gradient)
+
+        # print(gradient)
+
+        if gradient > 0:
+            signs.append(1)
+        elif gradient < 0:
+            signs.append(-1)
+        else:
+            signs.append(0)
     
-    print(np.diff(coords))
+    negative_to_positive_list = []
+    diffs = []
+    for j in range(len(signs)):
 
-    return "switches"
+        diff = signs[j] - signs[j-1]
+        if diff > 0:
+            negative_to_positive_list.append(True)
+        elif diff < 0:
+            negative_to_positive_list.append(False)
 
+        diffs.append(diff)
+
+    infls = np.where(diffs)[0]
+    infl_points = np.array([coords[0][infls], coords[1][infls]])
+
+    # print(np.array(gradients))
+    # print(np.sign(gradients))
+    return infl_points
 
 
 # returns 3 shapely box polygons for visualizing Lisee zones
@@ -116,7 +171,7 @@ def FTC_analysis(
 For testing only
 '''
 if __name__ == "__main__":
-    with TiffFile('502 with roi.tif') as tif:
+    with TiffFile('504 with roi.tif') as tif:
         
         image = tif.pages[0].asarray()
         assert tif.imagej_metadata is not None
@@ -130,14 +185,19 @@ if __name__ == "__main__":
         fig ,ax = pyplot.subplots()      
         ax.imshow(image)
         ax.plot(coords[:, 0], coords[:, 1])
+        print(coords)
         trimmed_poly: Polygon = trim_roi_polygon(roi=roi, image_height=image.shape[0])
 
 
-        # coords = np.asarray(trimmed_poly.exterior.coords.xy)
-        # # print(coords)
+        trimmed_coords = np.asarray(trimmed_poly.exterior.coords.xy)
+        # print(trimmed_coords)
         # gradient = np.gradient(coords)
 
-        print(f"switches: {calculated_medium_x(trimmed_poly)}")
+        infl_coords = calculated_medium_x(roi=trimmed_poly)
+        infl_coords = calculated_medium_x(roi=infl_coords)
+        infl_coords = calculated_medium_x(roi=infl_coords)
+        infl_coords = calculated_medium_x(roi=infl_coords)
+        ax.plot(infl_coords[0], infl_coords[1])
 
         plot_polygon(trimmed_poly, ax=ax, color="red")
         pyplot.show()

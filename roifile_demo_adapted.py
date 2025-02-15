@@ -43,6 +43,7 @@ with TiffFile('502 with roi.tif') as tif:
 
         fig ,ax = pyplot.subplots()
         ax.imshow(image)
+        print(coords)
         ax.plot(coords[:, 0], coords[:, 1])
         # plot box
         height = image.shape[0]
