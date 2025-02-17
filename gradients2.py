@@ -8,7 +8,7 @@ from shapely import Polygon, box,intersection, LineString
 from shapely.plotting import plot_line, plot_polygon
 from typing import Literal
 
-#TODO: return 2 from roi top line that intersect a ertical line
+#TODO: return 2 from roi top line that intersect a vertical line
 
 def intersecting_segment_coords(      
     poly_coords: np.ndarray,
