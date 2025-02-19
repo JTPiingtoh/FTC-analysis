@@ -76,6 +76,8 @@ if __name__ == "__main__":
             except KeyError:
                 print(f"{file} has no ROI.")
                 continue 
+            except ValueError:
+                print(f"{file} has a roi of 0 width")
     
     #     result = full_analysis(image_path=image_path)
     #     results_list.append(result)

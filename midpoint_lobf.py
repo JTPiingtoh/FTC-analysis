@@ -17,12 +17,11 @@ def closest_to(
     ''' Returns numbers in x closest to n by index, with x being a 1-dimensional array'''
     assert x.ndim == 1
 
-
     differences_array = np.array(abs(n-x))
     return x[differences_array == min(differences_array)]
 
 
-def midpoint_lobf(
+def roi_midpoint_lobf(
     roi_coords_x: np.ndarray,
     roi_coords_y: np.ndarray,
     polynomial_order: int = 7,
@@ -36,6 +35,9 @@ def midpoint_lobf(
     assert roi_coords_y.ndim == 1
     
     roi_width = max(roi_coords_x) - min(roi_coords_x)
+
+    if roi_width <= 0:
+        raise ValueError("Roi has zero width")
 
     # Line of best fit using mean squares
     coefs = polynomial.polyfit(roi_coords_x, roi_coords_y, polynomial_order)
@@ -51,7 +53,7 @@ def midpoint_lobf(
 
 
 if __name__ == "__main__":
-    with TiffFile('504 with roi.tif') as tif:
+    with TiffFile('502 with roi.tif') as tif:
         
         image = tif.pages[0].asarray()
         assert tif.imagej_metadata is not None
@@ -83,7 +85,7 @@ if __name__ == "__main__":
         # positive_roots = real_roots[real_roots > 0]
         # mid = closest_to(x=positive_roots, n=width/2 + left)[0]
      
-        mid = midpoint_lobf(coords[:,0], coords[:,1])
+        mid = roi_midpoint_lobf(coords[:,0], coords[:,1])
 
 
 
