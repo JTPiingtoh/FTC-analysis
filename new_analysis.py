@@ -193,7 +193,7 @@ def FTC_analysis(
         for y in range(grayscale_img_arr.shape[1]):
 
             if Point(x, y).within(lisee_lateral_roi_polygon):
-
+                pass
 
     return results_dict
     
@@ -210,7 +210,7 @@ def FTC_analysis(
 For testing only
 '''
 if __name__ == "__main__":
-    with TiffFile('502 with roi.tif') as tif:
+    with TiffFile('509 with roi.tif') as tif:
         
         image = tif.pages[0].asarray()
 
