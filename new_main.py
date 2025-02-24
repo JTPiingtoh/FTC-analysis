@@ -41,8 +41,7 @@ if __name__ == "__main__":
             os.makedirs(anaylsed_images_dir)
 
         except OSError as e:
-            print(f'''An output folder for the selected folder may already exist. Check to see if {output_dir} already exists on your machine; 
-                  if it does you may have already ran analyis.''')
+            print(f'''An output folder for the selected folder may already exist. Check to see if "{output_dir}" already exists on your machine; if it does you may have already ran analyis.''')
             exit()
 
 
