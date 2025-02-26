@@ -151,7 +151,7 @@ def FTC_analysis(
     roi_coords = roi.integer_coordinates
 
     trimmed_roi_coords = trim_roi_coords(
-        roi_coords_x=roi_coords[:,0],
+        roi_coords_x=roi_coords[:,0], # every column of the first row
         roi_coords_y=roi_coords[:,1],
         image_width=image_width,
         image_height=image_height,
@@ -210,7 +210,7 @@ def FTC_analysis(
 For testing only
 '''
 if __name__ == "__main__":
-    with TiffFile('509 with roi.tif') as tif:
+    with TiffFile('504 with roi.tif') as tif:
         
         image = tif.pages[0].asarray()
 
@@ -222,6 +222,10 @@ if __name__ == "__main__":
         coords = roi.integer_coordinates
         left = roi.left
         top = roi.top      
+        right = roi.right
+        bottom = roi.bottom
+
+
         coords += [left, top]
 
 
@@ -234,6 +238,8 @@ if __name__ == "__main__":
         fig ,ax = pyplot.subplots()      
         ax.imshow(image)
         ax.plot(coords[:, 0], coords[:, 1])
+        ax.plot(left, top, 'go')
+        ax.plot(right, bottom, 'go')
   
         # plot_polygon(trimmed_roi_polygon, color="red", ax=ax)        
         # ax.axvline(results["trimmed_roi_mid_x"])
