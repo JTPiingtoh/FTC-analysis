@@ -7,7 +7,12 @@ from tifffile import TiffFile
 from shapely import Polygon, box, intersection, Point
 from shapely.plotting import plot_line, plot_polygon
 from typing import Literal
-import math
+from PIL import Image
+
+# Image and roi are rotated about the image center. While ideally the image would be rotated around the roi center to ensure the roi
+# is perfectly flat, this requires finding the roi midpoint, which is itself inconsistent when not rotated. Therefore, (imperfect) rotation
+# occurs before finding the midpoint in the FTC_analysis function. 
+
 
 def roi_leftmost_rightmost(
     left: int,
@@ -57,12 +62,13 @@ def roi_leftmost_rightmost(
 
 
 if __name__ == "__main__":
-    with TiffFile('504 with roi.tif') as tif:
+    with TiffFile('502 with roi.tif') as tif:
         
         image = tif.pages[0].asarray()
-
-        image_width = image.shape[1]
-        image_height = image.shape[0]
+        image = Image.fromarray(image)
+     
+        image_width = image.width
+        image_height = image.height
         assert tif.imagej_metadata is not None
         overlays = tif.imagej_metadata['ROI']
         roi = ImagejRoi.frombytes(overlays)
@@ -87,23 +93,31 @@ if __name__ == "__main__":
         angle_rad = np.arctan2(dy, dx) # dy, dx
         angle_deg = np.rad2deg(angle_rad)
         
+        rotated_image = image.rotate(angle=angle_deg, expand=False)
+
         rot_matrix = np.array([[np.cos(-angle_rad), -np.sin(-angle_rad)],
                               [np.sin(-angle_rad), np.cos(-angle_rad)]], dtype='float64')
-
-        # coords = np.array([coords[:,0], coords[:,1]], dtype='float64')
         
-        print(coords)
-        print(rot_matrix)
-        coords = np.dot(coords, rot_matrix.T)
+        
 
+        center_x = int(image_width / 2)
+        center_y = int(image_height / 2)
 
-        fig ,ax = pyplot.subplots()      
-        ax.imshow(image)
-        ax.plot(coords[:, 0], coords[:, 1])
-        ax.plot(left, top, 'go')
-        ax.plot(right, bottom, 'go')
-        ax.plot([leftmost_coord[0], rightmost_coord[0]], [leftmost_coord[1], rightmost_coord[1]])
-  
+        rotated_coords = np.array(coords)
+        rotated_coords -= [center_x, center_y]
+        rotated_coords = np.dot(rotated_coords, rot_matrix.T)
+        rotated_coords += [center_x, center_y]
+
+        print(image)
+
+        fig ,ax = pyplot.subplots(1, 2)      
+        ax[0].imshow(image)
+        ax[0].plot(coords[:, 0], coords[:, 1])
+        # ax[0].plot([leftmost_coord[0], rightmost_coord[0]], [leftmost_coord[1], rightmost_coord[1]])
+
+        ax[1].imshow(rotated_image)
+        ax[1].plot(rotated_coords[:, 0], rotated_coords[:, 1])
+
         # plot_polygon(trimmed_roi_polygon, color="red", ax=ax)        
         # ax.axvline(results["trimmed_roi_mid_x"])
 

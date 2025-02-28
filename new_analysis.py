@@ -1,5 +1,6 @@
 import numpy as np
-import enum
+from PIL import Image
+
 from numpy.typing import ArrayLike
 from matplotlib import pyplot
 from roifile import ImagejRoi
@@ -7,7 +8,13 @@ from tifffile import TiffFile
 from shapely import Polygon, box, intersection, Point
 from shapely.plotting import plot_line, plot_polygon
 from typing import Literal
+
 from midpoint_lobf import roi_midpoint_lobf
+from roi_rotate import roi_leftmost_rightmost
+
+# BUG: Trim factors above 0.25 appears to break midpoint_lobf, which in turn
+# breaks lisee_roi_polygon, likely due to too much of the of the roi being trimmed.
+# For trim factors greater than 0.25, algorithic detection of midpoint will be needed instead.
 
 # TODO: needs to be able to take user input px/mm ratio
 def mm_to_pixels(
@@ -127,13 +134,84 @@ def lisee_CSA_polygon_function(
 
     return lateral_roi_polygon, central_roi_polygon, medial_roi_polygon
 
+
+def line_length(
+    coords_x: np.ndarray,
+    coords_y: np.ndarray
+)-> float:
+    '''
+    Takes an ordered series of coordinates, and returns the total length of lines
+    drawn between them.
+    '''
+    if coords_x.size != coords_y.size:
+        raise RuntimeError("line_length recieved coordinate arrays if different sizes.")
+
+    total_length:float = 0.0
+
+    # TODO
+    # for i in 
+
 # Return lisee csa measures
-def lisee_CSA_measures(
-        image_array: ArrayLike, 
-        roi: ImagejRoi
-        # TODO: ROI zones
-        ) -> tuple[float, float, float]:
-    pass
+def lisee_zone_average_thickness(
+    lisee_zone: Polygon  
+        ) -> float:
+    '''
+    Takes a lisee zone, and returns its average thickness as determined by the bottom line, or the bone
+    -cartilage interface.
+    '''
+    zone_coords_x, zone_coords_y = np.array(lisee_zone.exterior.coords.xy)
+
+    assert zone_coords_x.size > 0 and zone_coords_y.size > 0
+    assert zone_coords_x.shape == zone_coords_y.shape
+
+    left_x = min(zone_coords_x)
+    right_x = max(zone_coords_x)
+
+    left_indexes = []
+    right_indexes = []
+    for i in range(zone_coords_x.shape[0]):
+        if zone_coords_x[i] == left_x:
+            left_indexes.append(i)
+        elif zone_coords_x[i] == right_x:
+            right_indexes.append(i)
+    
+    
+    left_index = left_indexes[0]
+    if len(left_indexes) > 1:
+        max_y_left_indexes = zone_coords_y[left_index]
+        for index in left_indexes:
+            if zone_coords_y[index] > max_y_left_indexes:
+                max_y_left_indexes = zone_coords_y[index]
+                left_index = index
+    
+    right_index = right_indexes[0]
+    if len(right_indexes) > 1:
+        max_y_right_indexes = zone_coords_y[right_index]
+        for index in right_indexes:
+            if zone_coords_y[index] > max_y_right_indexes:
+                max_y_right_indexes = zone_coords_y[index]
+                right_index = index
+
+    index_1 = left_index
+    index_2 = right_index
+
+    if index_1 == index_2:
+        raise RuntimeError("Lisee_zone_average_thickness failed to find bottom line ends.")
+    
+    # ensures indexes are ordered correctly when slicing coord arrays. 
+    if index_1 > index_2:
+        index_2, index_1 = index_1, index_2
+
+    print(zone_coords_x)
+    print(left_index)
+    print(right_index)
+
+    print(zone_coords_x[index_1:index_2 + 1])
+    print(zone_coords_y[index_1:index_2 + 1])
+    
+
+
+    return 0.0
 
 
 # main function for FTC analysis
@@ -143,16 +221,53 @@ def FTC_analysis(
         **kwargs
         ) -> dict:
 
-    results_dict = {}
-
-    image_width = image_array.shape[1]
-    image_height = image_array.shape[0]
+    # convert to pil image for rotation late
+    image = Image.fromarray(image_array)
+    image_width = image.width
+    image_height = image.height
     
     roi_coords = roi.integer_coordinates
+    left = roi.left
+    top = roi.top      
+    right = roi.right
+    bottom = roi.bottom
+
+    # these coords are needed to calculate "tilt"
+    leftmost_coord, rightmost_coord = roi_leftmost_rightmost(
+        left=left,
+        right=right,
+        roi_coords_x=roi_coords[:,0],
+        roi_coords_y=roi_coords[:,1]
+    )
+
+    dy = rightmost_coord[1] - leftmost_coord[1]
+    dx = rightmost_coord[0] - leftmost_coord[0]
+
+    # rad and degs are required for roi rotation (np) and image rotation (pil) respectively
+    angle_rad = np.arctan2(dy, dx) # dy, dx
+    angle_deg = np.rad2deg(angle_rad)
+
+    # rotation matrix for roi
+    rot_matrix = np.array([[np.cos(-angle_rad), -np.sin(-angle_rad)],
+                          [np.sin(-angle_rad), np.cos(-angle_rad)]], dtype='float64')  
+
+    center_x = int(image_width / 2)
+    center_y = int(image_height / 2)
+
+    # renaming ndarray roi_coords to rotated_coords for clarity
+    rotated_roi_coords = roi_coords
+    rotated_roi_coords -= [center_x, center_y]
+    rotated_roi_coords = np.dot(rotated_roi_coords, rot_matrix.T)
+    rotated_roi_coords += [center_x, center_y]
+
+    # expand = false: true leads to misalignment with roi
+    rotated_image = image.rotate(angle=angle_deg, expand=False)
+    results_dict = {}
+    results_dict["img"] = rotated_image # return image for visualisation
 
     trimmed_roi_coords = trim_roi_coords(
-        roi_coords_x=roi_coords[:,0], # every column of the first row
-        roi_coords_y=roi_coords[:,1],
+        roi_coords_x=rotated_roi_coords[:,0], # every column of the first row
+        roi_coords_y=rotated_roi_coords[:,1],
         image_width=image_width,
         image_height=image_height,
         trim_factor=0.25)
@@ -187,6 +302,7 @@ def FTC_analysis(
     results_dict["lisee_central_area_mm"] = mm_to_pixels(lisee_central_roi_polygon.area)
     results_dict["lisee_medial_area_mm"] = mm_to_pixels(lisee_medial_roi_polygon.area)
 
+    # TODO: add echo intensity
     grayscale_img_arr = np.dot(image_array[..., :3], [1, 1, 1]) # remove alpha
 
     for x in range(grayscale_img_arr.shape[0]):
@@ -233,11 +349,13 @@ if __name__ == "__main__":
         results = FTC_analysis(image,roi)
         trimmed_roi_polygon = Polygon(np.column_stack(results["trimmed_roi_coords"]))
         
+        x = lisee_zone_average_thickness(
+            lisee_zone=results["lisee_polygons"][0]
+        )
 
 
         fig ,ax = pyplot.subplots()      
-        ax.imshow(image)
-        ax.plot(coords[:, 0], coords[:, 1])
+        ax.imshow(results["img"])
         ax.plot(left, top, 'go')
         ax.plot(right, bottom, 'go')
   
