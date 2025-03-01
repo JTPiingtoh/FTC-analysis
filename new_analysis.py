@@ -12,6 +12,7 @@ from typing import Literal
 from midpoint_lobf import roi_midpoint_lobf
 from roi_rotate import roi_leftmost_rightmost
 
+import math
 # BUG: Trim factors above 0.25 appears to break midpoint_lobf, which in turn
 # breaks lisee_roi_polygon, likely due to too much of the of the roi being trimmed.
 # For trim factors greater than 0.25, algorithic detection of midpoint will be needed instead.
@@ -19,9 +20,20 @@ from roi_rotate import roi_leftmost_rightmost
 # TODO: needs to be able to take user input px/mm ratio
 def mm_to_pixels(
     mm: float|int,
-    pixles_per_mm: float|int = 454
+    image_height_px: float|int = 454,
+    image_height_cm: float|int = 3.5,
     ) -> float:   
-    return ((mm / 10) * pixles_per_mm)/3.5
+    return ((mm / 10) * image_height_px) / image_height_cm
+
+def pixels_to_mm(
+    pixels: float|int,
+    image_height_px: float|int = 454,
+    image_height_cm: float|int = 3.5
+    ) -> float:
+    return (pixels * 
+                    10 * # convert to mm 
+                            image_height_cm) / image_height_px 
+    
 
 # TODO: define lisee zone constants
 class LISEE_ZONE():
@@ -130,8 +142,6 @@ def lisee_CSA_polygon_function(
     
     assert isinstance(medial_roi_polygon, Polygon)
 
-    print(medial_x)
-
     return lateral_roi_polygon, central_roi_polygon, medial_roi_polygon
 
 
@@ -146,10 +156,24 @@ def line_length(
     if coords_x.size != coords_y.size:
         raise RuntimeError("line_length recieved coordinate arrays if different sizes.")
 
+    if coords_x.ndim != 1 and coords_y.ndim != 1:
+        raise RuntimeError(f"line_length takes coord arrays with 1 dimension. coords_x.ndim: {coords_x.ndim}, coords_y.ndim:{coords_y.ndim}")
+
     total_length:float = 0.0
 
-    # TODO
-    # for i in 
+    for i in range(coords_x.shape[0] - 1):
+        x1, y1 = coords_x[i], coords_y[i]
+        x2, y2 = coords_x[i + 1], coords_y[i + 1]
+
+        # print(f"{int(x1), int(y1)}, {int(x2), int(y2)}")
+
+        total_length += math.sqrt(
+            math.pow((x2 - x1), 2) + math.pow((y2 - y1), 2)
+        )
+
+
+    return total_length
+
 
 # Return lisee csa measures
 def lisee_zone_average_thickness(
@@ -163,6 +187,7 @@ def lisee_zone_average_thickness(
 
     assert zone_coords_x.size > 0 and zone_coords_y.size > 0
     assert zone_coords_x.shape == zone_coords_y.shape
+    assert zone_coords_x.ndim == 1 and zone_coords_y.ndim == 1
 
     left_x = min(zone_coords_x)
     right_x = max(zone_coords_x)
@@ -175,22 +200,25 @@ def lisee_zone_average_thickness(
         elif zone_coords_x[i] == right_x:
             right_indexes.append(i)
     
-    
+    if len(left_indexes) == 1:
+        raise RuntimeError("lisee_zone_average_thickness polygon does not have a flat lhs")
+
+    if len(right_indexes) == 1:
+        raise RuntimeError("lisee_zone_average_thickness polygon does not have a flat rhs")
+
     left_index = left_indexes[0]
-    if len(left_indexes) > 1:
-        max_y_left_indexes = zone_coords_y[left_index]
-        for index in left_indexes:
-            if zone_coords_y[index] > max_y_left_indexes:
-                max_y_left_indexes = zone_coords_y[index]
-                left_index = index
+    max_y_left_indexes = zone_coords_y[left_index]
+    for index in left_indexes:
+        if zone_coords_y[index] > max_y_left_indexes:
+            max_y_left_indexes = zone_coords_y[index]
+            left_index = index
     
     right_index = right_indexes[0]
-    if len(right_indexes) > 1:
-        max_y_right_indexes = zone_coords_y[right_index]
-        for index in right_indexes:
-            if zone_coords_y[index] > max_y_right_indexes:
-                max_y_right_indexes = zone_coords_y[index]
-                right_index = index
+    max_y_right_indexes = zone_coords_y[right_index]
+    for index in right_indexes:
+        if zone_coords_y[index] > max_y_right_indexes:
+            max_y_right_indexes = zone_coords_y[index]
+            right_index = index
 
     index_1 = left_index
     index_2 = right_index
@@ -202,16 +230,7 @@ def lisee_zone_average_thickness(
     if index_1 > index_2:
         index_2, index_1 = index_1, index_2
 
-    print(zone_coords_x)
-    print(left_index)
-    print(right_index)
-
-    print(zone_coords_x[index_1:index_2 + 1])
-    print(zone_coords_y[index_1:index_2 + 1])
-    
-
-
-    return 0.0
+    return lisee_zone.area / line_length(coords_x=zone_coords_x[index_1:index_2 + 1], coords_y=zone_coords_y[index_1:index_2 + 1])
 
 
 # main function for FTC analysis
@@ -291,16 +310,29 @@ def FTC_analysis(
         )
 
     results_dict["lisee_polygons"] = lisee_polygons
-
+    results_dict["lisee_lateral_polygon"], results_dict["lisee_central_polygon"], results_dict["lisee_medial_polygon"] = lisee_polygons
     lisee_lateral_roi_polygon, lisee_central_roi_polygon, lisee_medial_roi_polygon = lisee_polygons
 
     results_dict["lisee_lateral_pixels"] = lisee_lateral_roi_polygon.area
     results_dict["lisee_central_pixels"] = lisee_central_roi_polygon.area
     results_dict["lisee_medial_pixels"] = lisee_medial_roi_polygon.area
 
-    results_dict["lisee_lateral_area_mm"] = mm_to_pixels(lisee_lateral_roi_polygon.area)
-    results_dict["lisee_central_area_mm"] = mm_to_pixels(lisee_central_roi_polygon.area)
-    results_dict["lisee_medial_area_mm"] = mm_to_pixels(lisee_medial_roi_polygon.area)
+    results_dict["lisee_lateral_area_mm"] = pixels_to_mm(lisee_lateral_roi_polygon.area)
+    results_dict["lisee_central_area_mm"] = pixels_to_mm(lisee_central_roi_polygon.area)
+    results_dict["lisee_medial_area_mm"] = pixels_to_mm(lisee_medial_roi_polygon.area)
+
+    lisee_lateral_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_lateral_roi_polygon)
+    lisee_central_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_central_roi_polygon)
+    lisee_medial_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_medial_roi_polygon)
+
+    results_dict["lisee_lateral_average_thickness_pixles"] = pixels_to_mm(lisee_lateral_average_thickness_pixles)
+    results_dict["lisee_central_average_thickness_pixles"] = pixels_to_mm(lisee_central_average_thickness_pixles)
+    results_dict["lisee_medial_average_thickness_pixles"]  = pixels_to_mm(lisee_medial_average_thickness_pixles )
+
+    results_dict["lisee_lateral_average_thickness_mm"] = lisee_lateral_average_thickness_pixles
+    results_dict["lisee_central_average_thickness_mm"] = lisee_central_average_thickness_pixles
+    results_dict["lisee_medial_average_thickness_mm"]  = lisee_medial_average_thickness_pixles 
+
 
     # TODO: add echo intensity
     grayscale_img_arr = np.dot(image_array[..., :3], [1, 1, 1]) # remove alpha
@@ -343,16 +375,9 @@ if __name__ == "__main__":
 
 
         coords += [left, top]
-
-
         
         results = FTC_analysis(image,roi)
         trimmed_roi_polygon = Polygon(np.column_stack(results["trimmed_roi_coords"]))
-        
-        x = lisee_zone_average_thickness(
-            lisee_zone=results["lisee_polygons"][0]
-        )
-
 
         fig ,ax = pyplot.subplots()      
         ax.imshow(results["img"])
@@ -363,6 +388,8 @@ if __name__ == "__main__":
         # ax.axvline(results["trimmed_roi_mid_x"])
 
         colors = ["red", "green", "blue"]
+
+        print(f'Central av thickness: {results["lisee_lateral_average_thickness_mm"]}')
 
         for i, polygon in enumerate(results["lisee_polygons"]):
             plot_polygon(polygon=polygon, ax=ax, color=colors[i])
