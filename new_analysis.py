@@ -335,13 +335,22 @@ def FTC_analysis(
 
 
     # TODO: add echo intensity
-    grayscale_img_arr = np.dot(image_array[..., :3], [1, 1, 1]) # remove alpha
+    # grayscale_img_arr = np.dot(image_array[..., :3], [1, 1, 1]) # remove alpha
 
-    for x in range(grayscale_img_arr.shape[0]):
-        for y in range(grayscale_img_arr.shape[1]):
+
+    min:int = image_array[0][0][0]
+    for x in range(image_array.shape[0]):
+        for y in range(image_array.shape[1]):
 
             if Point(x, y).within(lisee_lateral_roi_polygon):
-                pass
+                print(image_array[x][y][0], x ,y)
+
+            #     intensity: int = image_array[x][y][0]
+            #     if intensity < min:
+            #         min = intensity
+                
+
+    # print(min)
 
     return results_dict
     
@@ -376,7 +385,7 @@ if __name__ == "__main__":
 
         coords += [left, top]
         
-        results = FTC_analysis(image,roi)
+        results = FTC_analysis(image_array=image,roi=roi)
         trimmed_roi_polygon = Polygon(np.column_stack(results["trimmed_roi_coords"]))
 
         fig ,ax = pyplot.subplots()      
