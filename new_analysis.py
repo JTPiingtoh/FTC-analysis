@@ -335,22 +335,13 @@ def FTC_analysis(
 
 
     # TODO: add echo intensity
-    # grayscale_img_arr = np.dot(image_array[..., :3], [1, 1, 1]) # remove alpha
+    rotated_image_array = np.array(rotated_image)
+    rotated_image_array_gryscl = np.dot(rotated_image_array[..., :3], [1, 1, 1]) # remove alpha
 
 
-    min:int = image_array[0][0][0]
-    for x in range(image_array.shape[0]):
-        for y in range(image_array.shape[1]):
-
-            if Point(x, y).within(lisee_lateral_roi_polygon):
-                print(image_array[x][y][0], x ,y)
-
-            #     intensity: int = image_array[x][y][0]
-            #     if intensity < min:
-            #         min = intensity
+    print(rotated_image_array_gryscl.shape)
                 
 
-    # print(min)
 
     return results_dict
     
