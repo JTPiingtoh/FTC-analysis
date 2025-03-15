@@ -270,7 +270,7 @@ def FTC_analysis(
     rot_matrix = np.array([[np.cos(-angle_rad), -np.sin(-angle_rad)],
                           [np.sin(-angle_rad), np.cos(-angle_rad)]], dtype='float64')  
 
-    center_x = int(image_width / 2)
+    center_x = int(image_width / 2) 
     center_y = int(image_height / 2)
 
     # renaming ndarray roi_coords to rotated_coords for clarity
@@ -287,7 +287,7 @@ def FTC_analysis(
     trimmed_roi_coords = trim_roi_coords(
         roi_coords_x=rotated_roi_coords[:,0], # every column of the first row
         roi_coords_y=rotated_roi_coords[:,1],
-        image_width=image_width,
+        image_width=image_width, # BUG: This image width and height needs to be from post rotated image
         image_height=image_height,
         trim_factor=0.25)
 
@@ -336,12 +336,23 @@ def FTC_analysis(
 
     # TODO: add echo intensity
     rotated_image_array = np.array(rotated_image)
-    rotated_image_array_gryscl = np.dot(rotated_image_array[..., :3], [1, 1, 1]) # remove alpha
+    third = 1.0 / 3.0
 
+    rotated_image_array_gryscl = np.dot(rotated_image_array[..., :3], [1,1,1]) # remove alpha, dot product rgb channels
 
-    print(rotated_image_array_gryscl.shape)
-                
+    rotated_image_array_gryscl_width = rotated_image_array_gryscl.shape[0]
+    rotated_image_array_gryscl_height = rotated_image_array_gryscl.shape[1]
 
+    for x in range(rotated_image_array_gryscl_width):
+        for y in range(rotated_image_array_gryscl_height):
+            if not lisee_medial_roi_polygon.contains(Point(x, y)):
+                continue
+
+            print("contains! ",x, y)
+            echo_intensity = rotated_image_array_gryscl[x][y]
+            # assert not echo_intensity > 255
+
+            print(rotated_image_array_gryscl[x][y])
 
     return results_dict
     
@@ -358,7 +369,7 @@ def FTC_analysis(
 For testing only
 '''
 if __name__ == "__main__":
-    with TiffFile('504 with roi.tif') as tif:
+    with TiffFile('502 with roi.tif') as tif:
         
         image = tif.pages[0].asarray()
 
@@ -379,6 +390,7 @@ if __name__ == "__main__":
         results = FTC_analysis(image_array=image,roi=roi)
         trimmed_roi_polygon = Polygon(np.column_stack(results["trimmed_roi_coords"]))
 
+
         fig ,ax = pyplot.subplots()      
         ax.imshow(results["img"])
         ax.plot(left, top, 'go')
@@ -393,5 +405,7 @@ if __name__ == "__main__":
 
         for i, polygon in enumerate(results["lisee_polygons"]):
             plot_polygon(polygon=polygon, ax=ax, color=colors[i])
+
+        
 
         pyplot.show()
