@@ -5,12 +5,13 @@ from numpy.typing import ArrayLike
 from matplotlib import pyplot
 from roifile import ImagejRoi
 from tifffile import TiffFile
-from shapely import Polygon, box, intersection, Point
-from shapely.plotting import plot_line, plot_polygon
+from shapely import Polygon, box, intersection, Point, contains_xy
+from shapely.plotting import plot_line, plot_polygon, plot_points
 from typing import Literal
 
 from midpoint_lobf import roi_midpoint_lobf
 from roi_rotate import roi_leftmost_rightmost
+from helpers import average_ei
 
 import math
 # BUG: Trim factors above 0.25 appears to break midpoint_lobf, which in turn
@@ -333,26 +334,51 @@ def FTC_analysis(
     results_dict["lisee_central_average_thickness_mm"] = lisee_central_average_thickness_pixles
     results_dict["lisee_medial_average_thickness_mm"]  = lisee_medial_average_thickness_pixles 
 
-
     # TODO: add echo intensity
     rotated_image_array = np.array(rotated_image)
-    third = 1.0 / 3.0
+    third: float = 1.0 / 3.0
 
-    rotated_image_array_gryscl = np.dot(rotated_image_array[..., :3], [1,1,1]) # remove alpha, dot product rgb channels
+    rotated_image_array_gryscl = np.dot(rotated_image_array[..., :3], [third,third,third]) # remove alpha, dot product rgb channels
 
-    rotated_image_array_gryscl_width = rotated_image_array_gryscl.shape[0]
-    rotated_image_array_gryscl_height = rotated_image_array_gryscl.shape[1]
+    rotated_image_array_gryscl_width: int = rotated_image_array_gryscl.shape[0]
+    rotated_image_array_gryscl_height: int = rotated_image_array_gryscl.shape[1]
 
-    for x in range(rotated_image_array_gryscl_width):
-        for y in range(rotated_image_array_gryscl_height):
-            if not lisee_medial_roi_polygon.contains(Point(x, y)):
-                continue
 
-            print("contains! ",x, y)
-            echo_intensity = rotated_image_array_gryscl[x][y]
-            # assert not echo_intensity > 255
+    results_dict["lisee_lateral_ei"] = average_ei(
+        image_width=rotated_image_array_gryscl_width,
+        image_height=rotated_image_array_gryscl_height,
+        polygon=lisee_lateral_roi_polygon,
+        image_array=rotated_image_array_gryscl)
 
-            print(rotated_image_array_gryscl[x][y])
+    results_dict["lisee_central_ei"] = average_ei(
+        image_width=rotated_image_array_gryscl_width,
+        image_height=rotated_image_array_gryscl_height,
+        polygon=lisee_central_roi_polygon,
+        image_array=rotated_image_array_gryscl)
+
+    results_dict["lisee_medial_ei"] = average_ei(
+        image_width=rotated_image_array_gryscl_width,
+        image_height=rotated_image_array_gryscl_height,
+        polygon=lisee_medial_roi_polygon,
+        image_array=rotated_image_array_gryscl)
+
+
+    # pnt1 = Point(500, 183)
+    # print(lisee_lateral_roi_polygon.exterior.coords.xy)
+    # print(contains_xy(lisee_lateral_roi_polygon, 183, 500))
+
+    # fig, ax = pyplot.subplots()
+
+    # ax.imshow(rotated_image)
+    # plot_points(pnt1, ax=ax)
+
+    # # for i, polygon in enumerate(lisee_polygons):
+    # #     plot_polygon(polygon=polygon, ax=ax)
+
+    # plot_polygon(polygon=lisee_lateral_roi_polygon, ax=ax)
+
+
+    # pyplot.show()
 
     return results_dict
     
@@ -369,7 +395,7 @@ def FTC_analysis(
 For testing only
 '''
 if __name__ == "__main__":
-    with TiffFile('502 with roi.tif') as tif:
+    with TiffFile('509 with roi.tif') as tif:
         
         image = tif.pages[0].asarray()
 
@@ -388,8 +414,7 @@ if __name__ == "__main__":
         coords += [left, top]
         
         results = FTC_analysis(image_array=image,roi=roi)
-        trimmed_roi_polygon = Polygon(np.column_stack(results["trimmed_roi_coords"]))
-
+        print(results["lisee_central_ei"])
 
         fig ,ax = pyplot.subplots()      
         ax.imshow(results["img"])
