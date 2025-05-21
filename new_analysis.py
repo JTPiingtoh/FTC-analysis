@@ -5,8 +5,8 @@ from numpy.typing import ArrayLike
 from matplotlib import pyplot
 from roifile import ImagejRoi
 from tifffile import TiffFile
-from shapely import Polygon, box, intersection, Point
-from shapely.plotting import plot_line, plot_polygon
+from shapely import Polygon, box, intersection, Point, contains_xy
+from shapely.plotting import plot_line, plot_polygon, plot_points
 from typing import Literal
 import matplotlib.pyplot as plt
 
@@ -360,15 +360,51 @@ def FTC_analysis(
     results_dict["lisee_central_average_thickness_mm"] = lisee_central_average_thickness_pixles
     results_dict["lisee_medial_average_thickness_mm"]  = lisee_medial_average_thickness_pixles 
 
-
     # TODO: add echo intensity
-    grayscale_img_arr = np.dot(image_array[..., :3], [1, 1, 1]) # remove alpha
+    rotated_image_array = np.array(rotated_image)
+    third: float = 1.0 / 3.0
 
-    for x in range(grayscale_img_arr.shape[0]):
-        for y in range(grayscale_img_arr.shape[1]):
+    rotated_image_array_gryscl = np.dot(rotated_image_array[..., :3], [third,third,third]) # remove alpha, dot product rgb channels
 
-            if Point(x, y).within(lisee_lateral_roi_polygon):
-                pass
+    rotated_image_array_gryscl_width: int = rotated_image_array_gryscl.shape[0]
+    rotated_image_array_gryscl_height: int = rotated_image_array_gryscl.shape[1]
+
+
+    results_dict["lisee_lateral_ei"] = average_ei(
+        image_width=rotated_image_array_gryscl_width,
+        image_height=rotated_image_array_gryscl_height,
+        polygon=lisee_lateral_roi_polygon,
+        image_array=rotated_image_array_gryscl)
+
+    results_dict["lisee_central_ei"] = average_ei(
+        image_width=rotated_image_array_gryscl_width,
+        image_height=rotated_image_array_gryscl_height,
+        polygon=lisee_central_roi_polygon,
+        image_array=rotated_image_array_gryscl)
+
+    results_dict["lisee_medial_ei"] = average_ei(
+        image_width=rotated_image_array_gryscl_width,
+        image_height=rotated_image_array_gryscl_height,
+        polygon=lisee_medial_roi_polygon,
+        image_array=rotated_image_array_gryscl)
+
+
+    # pnt1 = Point(500, 183)
+    # print(lisee_lateral_roi_polygon.exterior.coords.xy)
+    # print(contains_xy(lisee_lateral_roi_polygon, 183, 500))
+
+    # fig, ax = pyplot.subplots()
+
+    # ax.imshow(rotated_image)
+    # plot_points(pnt1, ax=ax)
+
+    # # for i, polygon in enumerate(lisee_polygons):
+    # #     plot_polygon(polygon=polygon, ax=ax)
+
+    # plot_polygon(polygon=lisee_lateral_roi_polygon, ax=ax)
+
+
+    # pyplot.show()
 
     return results_dict
     
@@ -456,5 +492,7 @@ if __name__ == "__main__":
 
         for i, polygon in enumerate(lisee_polygons):
             plot_polygon(polygon=polygon, ax=ax, color=colors[i])
+
+        
 
         pyplot.show()

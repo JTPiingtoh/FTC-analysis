@@ -1,5 +1,11 @@
-import numpy as np
+numbers = [5, 4, 6] # 5
 
-my_array = np.arange(1, 10)
+n = 0
+sum = 0
+average = 0
 
-print(my_array[2:4])
+for i, number in enumerate(numbers):
+    average = ((average * i) + number) / (i + 1)
+    print(average)
+
+print(average)
