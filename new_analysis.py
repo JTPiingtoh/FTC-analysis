@@ -364,29 +364,29 @@ def FTC_analysis(
     rotated_image_array = np.array(rotated_image)
     third: float = 1.0 / 3.0
 
-    rotated_image_array_gryscl = np.dot(rotated_image_array[..., :3], [third,third,third]) # remove alpha, dot product rgb channels
+    # rotated_image_array_gryscl = np.dot(rotated_image_array[..., :3], [third,third,third]) # remove alpha, dot product rgb channels
 
-    rotated_image_array_gryscl_width: int = rotated_image_array_gryscl.shape[0]
-    rotated_image_array_gryscl_height: int = rotated_image_array_gryscl.shape[1]
+    # rotated_image_array_gryscl_width: int = rotated_image_array_gryscl.shape[0]
+    # rotated_image_array_gryscl_height: int = rotated_image_array_gryscl.shape[1]
 
 
-    results_dict["lisee_lateral_ei"] = average_ei(
-        image_width=rotated_image_array_gryscl_width,
-        image_height=rotated_image_array_gryscl_height,
-        polygon=lisee_lateral_roi_polygon,
-        image_array=rotated_image_array_gryscl)
+    # results_dict["lisee_lateral_ei"] = average_ei(
+    #     image_width=rotated_image_array_gryscl_width,
+    #     image_height=rotated_image_array_gryscl_height,
+    #     polygon=lisee_lateral_roi_polygon,
+    #     image_array=rotated_image_array_gryscl)
 
-    results_dict["lisee_central_ei"] = average_ei(
-        image_width=rotated_image_array_gryscl_width,
-        image_height=rotated_image_array_gryscl_height,
-        polygon=lisee_central_roi_polygon,
-        image_array=rotated_image_array_gryscl)
+    # results_dict["lisee_central_ei"] = average_ei(
+    #     image_width=rotated_image_array_gryscl_width,
+    #     image_height=rotated_image_array_gryscl_height,
+    #     polygon=lisee_central_roi_polygon,
+    #     image_array=rotated_image_array_gryscl)
 
-    results_dict["lisee_medial_ei"] = average_ei(
-        image_width=rotated_image_array_gryscl_width,
-        image_height=rotated_image_array_gryscl_height,
-        polygon=lisee_medial_roi_polygon,
-        image_array=rotated_image_array_gryscl)
+    # results_dict["lisee_medial_ei"] = average_ei(
+    #     image_width=rotated_image_array_gryscl_width,
+    #     image_height=rotated_image_array_gryscl_height,
+    #     polygon=lisee_medial_roi_polygon,
+    #     image_array=rotated_image_array_gryscl)
 
 
     # pnt1 = Point(500, 183)
