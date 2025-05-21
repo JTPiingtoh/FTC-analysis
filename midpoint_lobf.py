@@ -8,6 +8,9 @@ from tifffile import TiffFile
 from shapely import Polygon, box,intersection, LineString
 from shapely.plotting import plot_line, plot_polygon
 from typing import Literal
+from PIL import Image
+
+from roi_rotate import rotate_image_and_roi
 
 
 def closest_to(
@@ -24,7 +27,7 @@ def closest_to(
 def roi_midpoint_lobf(
     roi_coords_x: np.ndarray,
     roi_coords_y: np.ndarray,
-    polynomial_order: int = 7,
+    polynomial_order: int = 4,
 ) -> float:
     '''As  FTC ROIs tend to have a recurve shape, their overall geometry can be approximated by plotting 
         a line of best fit using an nth order polynomial. Calculating the point at which the gradient
@@ -35,6 +38,7 @@ def roi_midpoint_lobf(
     assert roi_coords_y.ndim == 1
     
     roi_width = max(roi_coords_x) - min(roi_coords_x)
+    roi_left = float(min(roi_coords_x))
 
     if roi_width <= 0:
         raise ValueError("Roi has zero width")
@@ -49,13 +53,16 @@ def roi_midpoint_lobf(
     real_roots = lobf_roots[~np.iscomplex(lobf_roots)].real # ~ bitwise not
     positive_roots = real_roots[real_roots > 0] # complex and negative real numbers are disgarded 
 
-    return closest_to(x=positive_roots, n=roi_width/2) # numbers closest to half-width is calculated
+
+
+    return closest_to(x=positive_roots, n=(roi_width/2) + roi_left) # numbers closest to half-width is calculated
 
 
 if __name__ == "__main__":
-    with TiffFile('502 with roi.tif') as tif:
+    with TiffFile('14_annotated_with_border.tif') as tif:
         
         image = tif.pages[0].asarray()
+        image = Image.fromarray(image)
         assert tif.imagej_metadata is not None
         overlays = tif.imagej_metadata['ROI']
         roi = ImagejRoi.frombytes(overlays)
@@ -63,10 +70,10 @@ if __name__ == "__main__":
         left = roi.left
         top = roi.top      
         coords += [left, top]
-        polygon = Polygon(coords)
+        
 
-        height = image.shape[0]
-        width = image.shape[1]
+        # height = image.shape[0]
+        # width = image.shape[1]
         # line = LineString([[width / 1.2 , 0], [width / 1.2, height]])
         # coefs = polynomial.polyfit(coords[:,0], coords[:,1], 7)
         # roi_polynomial = Polynomial(coefs)
@@ -85,11 +92,10 @@ if __name__ == "__main__":
         # positive_roots = real_roots[real_roots > 0]
         # mid = closest_to(x=positive_roots, n=width/2 + left)[0]
      
+        image, coords = rotate_image_and_roi(image, roi)
+        polygon = Polygon(coords)
+
         mid = roi_midpoint_lobf(coords[:,0], coords[:,1])
-
-
-
-
         fig ,ax = plt.subplots()      
         ax.imshow(image)
 

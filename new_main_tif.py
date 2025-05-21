@@ -1,12 +1,12 @@
 import os
 from tqdm import tqdm
 import pandas as pd
-from analysis import full_analysis
 import tkinter as tk
 from tkinter import filedialog
 from tifffile import TiffFile
 from roifile import ImagejRoi
 from new_analysis import FTC_analysis 
+import matplotlib.pyplot as plt
 
 def get_folder_directory():
     root = tk.Tk()
@@ -33,7 +33,7 @@ if __name__ == "__main__":
         input_file_name = os.path.basename(input_directory)
 
         output_base_dir = os.path.dirname(input_directory)
-        output_dir = os.path.join(output_base_dir, f"{input_file_name} OUTPUTS")
+        output_dir = os.path.join(output_base_dir, f"{input_file_name} OUTPUTS").replace('\\', '/')
         
         try:
             os.makedirs(output_dir)
@@ -66,30 +66,35 @@ if __name__ == "__main__":
         # Attempt to parse ROI
         with TiffFile(image_path) as tif:
             try:          
+                print(image_path)
                 image_array = tif.pages[0].asarray()
                 roi_bytes = tif.imagej_metadata['ROI'] # KeyError
                 roi = ImagejRoi.frombytes(roi_bytes)
                 FTC_results_dict = FTC_analysis(image_array=image_array, roi=roi)
+                results_list.append(FTC_results_dict)
 
+                analysed_image_path = os.path.join(anaylsed_images_dir, f"{filename} ANALYSED{extension}").replace('\\', '/')
+          
+                FTC_results_dict["img"].savefig(analysed_image_path)
+                plt.close(FTC_results_dict["img"])
 
-
-            except KeyError:
-                print(f"{file} has no ROI.")
+            except KeyError as e:
+                print(f"{filename}: {e}")
                 continue 
-            except ValueError:
-                print(f"{file} has a roi of 0 width")
-    
-    #     result = full_analysis(image_path=image_path)
-    #     results_list.append(result)
-    #     analysed_image_path = os.path.join(anaylsed_images_dir, f"{filename} ANALYSED{extension}").replace('\\', '/')
-    #     result["img"].save(analysed_image_path)
+            except ValueError as e:
+                print(f"{filename}: {e}")
 
-    # # Create a DataFrame from the results list
-    # results_df = pd.DataFrame(results_list)
+            except RuntimeError as e:
+                print(f"{filename}: {e}")
+        
+        
 
-    # csv_file_path = os.path.join(output_dir, f"{input_file_name} ANALYSED.csv").replace('\\', '/')
-    # results_df.to_csv(csv_file_path, index=False)
+    # Create a DataFrame from the results list
+    results_df = pd.DataFrame(results_list)
 
-    # os.startfile(output_base_dir)
+    csv_file_path = os.path.join(output_dir, f"{input_file_name} ANALYSED.csv").replace('\\', '/')
+    results_df.to_csv(csv_file_path, index=False)
+
+    os.startfile(output_base_dir)
 
         

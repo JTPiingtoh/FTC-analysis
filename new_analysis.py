@@ -8,9 +8,10 @@ from tifffile import TiffFile
 from shapely import Polygon, box, intersection, Point
 from shapely.plotting import plot_line, plot_polygon
 from typing import Literal
+import matplotlib.pyplot as plt
 
 from midpoint_lobf import roi_midpoint_lobf
-from roi_rotate import roi_leftmost_rightmost
+from roi_rotate import roi_leftmost_rightmost, rotate_image_and_roi
 
 import math
 # BUG: Trim factors above 0.25 appears to break midpoint_lobf, which in turn
@@ -67,6 +68,8 @@ def trim_roi_polygon(
     new_roi_right = roi.right + (roi_width * trim_factor)
     trim_box = box(new_roi_left, 0, new_roi_right, image_height)
 
+    # print(new_roi_left)
+
     return intersection(trim_box, Polygon(roi.integer_coordinates)) # Intersect betweeb trim box and roi
 
 
@@ -75,21 +78,51 @@ def trim_roi_coords(
     roi_coords_y: np.ndarray,
     image_width: int|float,
     image_height: int|float,
-    trim_factor: float
-) -> np.ndarray[np.ndarray, np.ndarray]:
+    trim_factor: float,
+    image_left_coord: int|float
+) -> np.ndarray:
     '''
     Returns ndarray representing coords of trimmed roi based on image width. Ensure roi supplied to function has coords aligned with background image. 
     '''
 
     new_roi_left: int = image_width * (trim_factor/ 2) # Left and right are seemingly flipped
+    # print(new_roi_left)
+
     new_roi_right: int = image_width - image_width * (trim_factor/ 2)
+
+    trim_box = box(new_roi_left+image_left_coord, 0, new_roi_right, image_height)
+
+    intersection_polgyon= intersection(trim_box, Polygon(np.column_stack((roi_coords_x, roi_coords_y))), grid_size=None)
+
+    return np.array(intersection_polgyon.exterior.coords.xy)
+    
+
+
+def trim_roi_coords_roi_based(
+    roi_coords_x: np.ndarray,
+    roi_coords_y: np.ndarray,
+    roi_left: int|float,
+    roi_right: int|float,
+    trim_factor: float,
+    image_height: int|float
+) -> np.ndarray:
+    '''
+    Returns ndarray representing coords of trimmed ROI based on ROI width. Ensure ROI supplied to function has coords aligned with background image. 
+    '''
+
+    roi_width = roi_right - roi_left
+
+    new_roi_left: int = roi_left + roi_width * (trim_factor/ 2) # Left and right are seemingly flipped
+    # print(new_roi_left)
+
+    new_roi_right: int = roi_right - roi_width * (trim_factor/ 2)
 
     trim_box = box(new_roi_left, 0, new_roi_right, image_height)
 
     intersection_polgyon= intersection(trim_box, Polygon(np.column_stack((roi_coords_x, roi_coords_y))), grid_size=None)
 
     return np.array(intersection_polgyon.exterior.coords.xy)
-    
+
 
 def box_polygon_intersect(
         box_coords: tuple[float, float, float, float],
@@ -101,7 +134,7 @@ def box_polygon_intersect(
     '''
     xmin, ymin, xmax, ymax = box_coords
 
-    return intersection(box(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax), polygon)[0]
+    return intersection(box(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax), polygon)
 
 
 # returns 3 shapely box polygons for visualizing Lisee zones
@@ -114,15 +147,15 @@ def lisee_CSA_polygon_function(
         
 ) -> tuple[Polygon, Polygon, Polygon]:
     
-    roi_left_x = min(roi_coords_x)
-    roi_right_x = max(roi_coords_x)
-    roi_width = roi_left_x - roi_right_x
+    roi_left_x = float(min(roi_coords_x))
+    roi_right_x = float(max(roi_coords_x))
+    roi_width = float(roi_left_x - roi_right_x)
 
     medial_adjust: float = LISEE_ZONE.MEDIAL(roi_width)
     lateral_adjust: float = LISEE_ZONE.LATERAL(roi_width)
 
-    medial_x = roi_mid_x + medial_adjust
-    lateral_x = roi_mid_x + lateral_adjust
+    medial_x = float(roi_mid_x[0] + medial_adjust)
+    lateral_x = float(roi_mid_x[0] + lateral_adjust)
 
     trimmed_roi_polygon = Polygon(np.column_stack((roi_coords_x, roi_coords_y)))
 
@@ -140,9 +173,13 @@ def lisee_CSA_polygon_function(
         polygon=trimmed_roi_polygon
     )
     
+    assert isinstance(central_roi_polygon, Polygon)
     assert isinstance(medial_roi_polygon, Polygon)
+    assert isinstance(lateral_roi_polygon, Polygon)
 
-    return lateral_roi_polygon, central_roi_polygon, medial_roi_polygon
+
+
+    return lateral_roi_polygon, central_roi_polygon, medial_roi_polygon## TODO: remove trimmed
 
 
 def line_length(
@@ -194,6 +231,7 @@ def lisee_zone_average_thickness(
 
     left_indexes = []
     right_indexes = []
+
     for i in range(zone_coords_x.shape[0]):
         if zone_coords_x[i] == left_x:
             left_indexes.append(i)
@@ -246,50 +284,28 @@ def FTC_analysis(
     image_height = image.height
     
     roi_coords = roi.integer_coordinates
+    
     left = roi.left
     top = roi.top      
     right = roi.right
     bottom = roi.bottom
 
-    # these coords are needed to calculate "tilt"
-    leftmost_coord, rightmost_coord = roi_leftmost_rightmost(
-        left=left,
-        right=right,
-        roi_coords_x=roi_coords[:,0],
-        roi_coords_y=roi_coords[:,1]
+    roi_coords += [left, top]
+
+    rotated_image, rotated_roi_coords = rotate_image_and_roi(image=Image.fromarray(image_array), roi=roi)
+
+    results_dict = {}
+    # results_dict["img"] = rotated_image # return image for visualisation
+
+    trimmed_roi_coords = trim_roi_coords_roi_based(
+    roi_coords_x=rotated_roi_coords[:,0], # every column of the first row
+    roi_coords_y=rotated_roi_coords[:,1],
+    roi_left=left,
+    roi_right=right,
+    image_height=image_height,
+    trim_factor=0.25
     )
 
-    dy = rightmost_coord[1] - leftmost_coord[1]
-    dx = rightmost_coord[0] - leftmost_coord[0]
-
-    # rad and degs are required for roi rotation (np) and image rotation (pil) respectively
-    angle_rad = np.arctan2(dy, dx) # dy, dx
-    angle_deg = np.rad2deg(angle_rad)
-
-    # rotation matrix for roi
-    rot_matrix = np.array([[np.cos(-angle_rad), -np.sin(-angle_rad)],
-                          [np.sin(-angle_rad), np.cos(-angle_rad)]], dtype='float64')  
-
-    center_x = int(image_width / 2)
-    center_y = int(image_height / 2)
-
-    # renaming ndarray roi_coords to rotated_coords for clarity
-    rotated_roi_coords = roi_coords
-    rotated_roi_coords -= [center_x, center_y]
-    rotated_roi_coords = np.dot(rotated_roi_coords, rot_matrix.T)
-    rotated_roi_coords += [center_x, center_y]
-
-    # expand = false: true leads to misalignment with roi
-    rotated_image = image.rotate(angle=angle_deg, expand=False)
-    results_dict = {}
-    results_dict["img"] = rotated_image # return image for visualisation
-
-    trimmed_roi_coords = trim_roi_coords(
-        roi_coords_x=rotated_roi_coords[:,0], # every column of the first row
-        roi_coords_y=rotated_roi_coords[:,1],
-        image_width=image_width,
-        image_height=image_height,
-        trim_factor=0.25)
 
     results_dict["trimmed_roi_coords"] = trimmed_roi_coords
 
@@ -309,6 +325,17 @@ def FTC_analysis(
          roi_mid_x=trimmed_roi_mid_x   
         )
 
+
+    # TODO: save annotated image to dict, remove polygons from dict
+    plt.ioff()
+    fig, ax = plt.subplots()
+    ax.imshow(rotated_image)
+    colors = ["red", "green", "blue"]
+    for i, polygon in enumerate(lisee_polygons):
+            plot_polygon(polygon=polygon, ax=ax, color=colors[i])
+    
+    results_dict["img"] = fig
+    
     results_dict["lisee_polygons"] = lisee_polygons
     results_dict["lisee_lateral_polygon"], results_dict["lisee_central_polygon"], results_dict["lisee_medial_polygon"] = lisee_polygons
     lisee_lateral_roi_polygon, lisee_central_roi_polygon, lisee_medial_roi_polygon = lisee_polygons
@@ -358,15 +385,16 @@ def FTC_analysis(
 For testing only
 '''
 if __name__ == "__main__":
-    with TiffFile('504 with roi.tif') as tif:
+    with TiffFile('14_annotated_with_border.tif') as tif:
         
-        image = tif.pages[0].asarray()
+        image_array = tif.pages[0].asarray()
+        
 
-        image_width = image.shape[1]
-        image_height = image.shape[0]
+        image_width = image_array.shape[1]
+        image_height = image_array.shape[0]
         assert tif.imagej_metadata is not None
-        overlays = tif.imagej_metadata['ROI']
-        roi = ImagejRoi.frombytes(overlays)
+        roi_bytes = tif.imagej_metadata['ROI']
+        roi = ImagejRoi.frombytes(roi_bytes)
         coords = roi.integer_coordinates
         left = roi.left
         top = roi.top      
@@ -376,22 +404,57 @@ if __name__ == "__main__":
 
         coords += [left, top]
         
-        results = FTC_analysis(image,roi)
-        trimmed_roi_polygon = Polygon(np.column_stack(results["trimmed_roi_coords"]))
+        # results = FTC_analysis(image,roi)
+        # trimmed_roi_polygon = Polygon(np.column_stack(results["trimmed_roi_coords"]))
+        rotated_image, rotated_roi_coords = rotate_image_and_roi(image=Image.fromarray(image_array), roi=roi)
 
+        trimmed_roi_coords = trim_roi_coords(
+        roi_coords_x=rotated_roi_coords[:,0], # every column of the first row
+        roi_coords_y=rotated_roi_coords[:,1],
+        image_width=(right-left),
+        image_height=image_height,
+        trim_factor=0.25,
+        image_left_coord=left
+        )
+
+        trimmed_roi_coords = trim_roi_coords_roi_based(
+        roi_coords_x=rotated_roi_coords[:,0], # every column of the first row
+        roi_coords_y=rotated_roi_coords[:,1],
+        roi_left=left,
+        roi_right=right,
+        image_height=image_height,
+        trim_factor=0.25
+        )
+
+        trimmed_roi_mid_x = roi_midpoint_lobf(
+        roi_coords_x=trimmed_roi_coords[0],
+        roi_coords_y=trimmed_roi_coords[1],
+        polynomial_order=4
+        )
+
+        lisee_polygons = lisee_CSA_polygon_function(
+         image_height=image_height,
+         image_width=image_width,
+         roi_coords_x=trimmed_roi_coords[0],
+         roi_coords_y=trimmed_roi_coords[1],
+         roi_mid_x=trimmed_roi_mid_x   
+        )
+
+        
         fig ,ax = pyplot.subplots()      
-        ax.imshow(results["img"])
+        # fig.add_subfigure(results["img"])
+        ax.imshow(rotated_image)
         ax.plot(left, top, 'go')
         ax.plot(right, bottom, 'go')
   
         # plot_polygon(trimmed_roi_polygon, color="red", ax=ax)        
         # ax.axvline(results["trimmed_roi_mid_x"])
 
-        colors = ["red", "green", "blue"]
+        colors = ["red", "green", "blue" ,"purple"]
 
-        print(f'Central av thickness: {results["lisee_lateral_average_thickness_mm"]}')
+        # print(f'Central av thickness: {results["lisee_lateral_average_thickness_mm"]}')
 
-        for i, polygon in enumerate(results["lisee_polygons"]):
+        for i, polygon in enumerate(lisee_polygons):
             plot_polygon(polygon=polygon, ax=ax, color=colors[i])
 
         pyplot.show()
