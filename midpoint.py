@@ -7,7 +7,7 @@ from tifffile import TiffFile
 from shapely import Polygon, box,intersection, LineString
 from shapely.plotting import plot_line, plot_polygon
 from typing import Literal
-import multipolyfit as mpf
+# import multipolyfit as mpf
 
 
 def intersecting_segment_coords(      
@@ -117,9 +117,6 @@ def find_midpoint(
 ):
     LEFT = "l"
     RIGHT = "r"
-
-    
-
 
     # define lines
     directions = [LEFT, RIGHT]
