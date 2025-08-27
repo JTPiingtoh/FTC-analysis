@@ -95,6 +95,10 @@ def rotate_image_and_roi(
     angle_rad = np.arctan2(dy, dx) # dy, dx
     angle_deg = np.rad2deg(angle_rad)
     
+    #TODO change roi center cords to align with expanded rotated image
+
+    # Could use numpy to rotate the image: this would prevent the scaling
+
     rotated_image = image.rotate(angle=angle_deg, expand=False)
 
     rot_matrix = np.array([[np.cos(-angle_rad), -np.sin(-angle_rad)],
@@ -113,7 +117,7 @@ def rotate_image_and_roi(
 
 
 if __name__ == "__main__":
-    with TiffFile('14_annotated_with_border.tif') as tif:
+    with TiffFile('570.tif') as tif:
         
         image = tif.pages[0].asarray()
         image = Image.fromarray(image)
