@@ -100,14 +100,14 @@ def roi_midpoint_from_gradients(
     roi_coords_x_cycle = CycleLoop(iterable=roi_coords_x, start_index=top_line_intersect_index)
 
     # Iterate through top line to find y coords
-    while edges < 2:
+    # while edges < 2:
 
 
-    iterator = 1
-    edges = 0
+    # iterator = 1
+    # edges = 0
 
-    max_y = 0
-    med_x = []
+    # max_y = 0
+    # med_x = []
 
     # Iterate through top line, finding the lowest
     

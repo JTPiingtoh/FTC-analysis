@@ -20,6 +20,8 @@ import math
 # For trim factors greater than 0.25, algorithic detection of midpoint will be needed instead.
 
 # TODO: needs to be able to take user input px/mm ratio
+
+# TODO: move these helper functions to different files.
 def mm_to_pixels(
     mm: float|int,
     image_height_px: float|int = 454,
@@ -257,7 +259,6 @@ def FTC_analysis(
     trim_factor=0.25
     )
 
-
     results_dict["trimmed_roi_coords"] = trimmed_roi_coords
 
     trimmed_roi_mid_x = roi_midpoint_lobf(
@@ -375,8 +376,7 @@ if __name__ == "__main__":
     with TiffFile('14_annotated_with_border.tif') as tif:
         
         image_array = tif.pages[0].asarray()
-        
-
+    
         image_width = image_array.shape[1]
         image_height = image_array.shape[0]
         assert tif.imagej_metadata is not None
@@ -387,7 +387,6 @@ if __name__ == "__main__":
         top = roi.top      
         right = roi.right
         bottom = roi.bottom
-
 
         coords += [left, top]
         
