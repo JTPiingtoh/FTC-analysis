@@ -53,17 +53,17 @@ def intersecting_segment_coords(
                 max_y = intersect_y
 
 
-    print(f"Final max_y: {max_y}")
-    
-
-
     return point_index
 
 
-def roi_midpoint_from_gradients(
+def roi_midpoint_from_algo(
     roi_coords_x: np.ndarray,
     roi_coords_y: np.ndarray
 ):
+    '''
+    Figures out roi by finding lowest y point on the top line of the roi. This function is called assuming that
+    the roi has been trimmed, and therefore has 2 vertical lines on both sides of the trimmed roi.
+    '''
     # Ensure trim #
         
     assert roi_coords_x.shape == roi_coords_y.shape
@@ -90,37 +90,39 @@ def roi_midpoint_from_gradients(
 
     print(roi_coords_x[top_line_intersect_index], roi_coords_y[top_line_intersect_index])
 
-    iterator = 1
-    edges = 0
-
-    max_y = 0
-    med_x = []
-    
-    roi_coords_y_cycle = CycleLoop(iterable=roi_coords_y, start_index=top_line_intersect_index)
-    roi_coords_x_cycle = CycleLoop(iterable=roi_coords_x, start_index=top_line_intersect_index)
-
-    # Iterate through top line to find y coords
-    # while edges < 2:
-
-
-    # iterator = 1
-    # edges = 0
-
-    # max_y = 0
-    # med_x = []
-
     # Iterate through top line, finding the lowest
     
+    roi_coords_x_cycle = CycleLoop(iterable=roi_coords_x, start_index=top_line_intersect_index)
+    roi_coords_y_cycle = CycleLoop(iterable=roi_coords_y, start_index=top_line_intersect_index)
+
+    iterator = 1
+    edges = 0
+    max_y = 0
+    med_x = []
+    iterations = 0
+    MAX_ITERATIONS = 200
+
+    # for if 2 points have the same 
+    flat_pairs = []
+
     # TODO: handle straight lines
     while edges < 2:
 
+        iterations += 1
+        if iterations > MAX_ITERATIONS:
+            raise RuntimeError(f"roi_mid_point_from_gradients() could not find midpoint after {MAX_ITERATIONS} iterations." \
+                               "Roi may not have been trimmed.")
         current_x = roi_coords_x_cycle.current
         next_x = roi_coords_x_cycle.peek1(iterator)
 
-        current_y = roi_coords_y[roi_coords_x_cycle.current_index]
+        current_y = roi_coords_y_cycle.current
         if current_y > max_y:
             max_y = current_y
             med_x = roi_coords_x_cycle.current 
+
+        next_y = roi_coords_y_cycle.peek1(iterator)
+        if current_y == next_y:            
+            flat_pairs.append(((current_x, current_y), (next_x, next_y)))
 
         if next_x == current_x:
             iterator *=- 1
@@ -128,6 +130,16 @@ def roi_midpoint_from_gradients(
 
         roi_coords_x_cycle.step(iterator)
 
+    if len(flat_pairs) > 0:
+
+        flat_pairs = np.array(flat_pairs)
+
+        # finds the flat pair of points with the highest y values, and averages
+        # their x coords if their y value is greater or eq to max_y
+        max_flat_y = np.max(flat_pairs[:,0,1])
+        if max_flat_y >= max_y:
+            med_x = np.mean(flat_pairs[flat_pairs[:,0,1] == max_flat_y][0].T[0])
+        
     return med_x
 
 
@@ -176,7 +188,7 @@ if __name__ == "__main__":
         polynomial_order=4
         )
 
-        midpoint = roi_midpoint_from_gradients(
+        algo_mid_x = roi_midpoint_from_algo(
             roi_coords_x=trimmed_roi_coords[0],
             roi_coords_y=trimmed_roi_coords[1],            
         )
@@ -187,7 +199,7 @@ if __name__ == "__main__":
         )
 
 
-        print(f"midpoint: {midpoint}")
+        print(f"midpoint: {algo_mid_x}")
         print(f"poly_midpoint: {poly_midpoint}")
 
 

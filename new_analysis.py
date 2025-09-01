@@ -261,20 +261,24 @@ def FTC_analysis(
 
     results_dict["trimmed_roi_coords"] = trimmed_roi_coords
 
-    trimmed_roi_mid_x = roi_midpoint_lobf(
+    
+
+    trimmed_roi_lobf_mid_x = roi_midpoint_lobf(
         roi_coords_x=trimmed_roi_coords[0],
         roi_coords_y=trimmed_roi_coords[1],
         polynomial_order=7
     )
 
-    results_dict["trimmed_roi_mid_x"] = trimmed_roi_mid_x
+    # TODO: add algo mid_x 
+
+    results_dict["trimmed_roi_lobf_mid_x"] = trimmed_roi_lobf_mid_x
 
     lisee_polygons = lisee_CSA_polygon_function(
          image_height=image_height,
          image_width=image_width,
          roi_coords_x=trimmed_roi_coords[0],
          roi_coords_y=trimmed_roi_coords[1],
-         roi_mid_x=trimmed_roi_mid_x   
+         roi_mid_x=trimmed_roi_lobf_mid_x   
         )
 
 
@@ -404,7 +408,7 @@ if __name__ == "__main__":
         trim_factor=0.25
         )
 
-        trimmed_roi_mid_x = roi_midpoint_lobf(
+        trimmed_roi_lobf_mid_x = roi_midpoint_lobf(
         roi_coords_x=trimmed_roi_coords[0],
         roi_coords_y=trimmed_roi_coords[1],
         polynomial_order=4
@@ -415,7 +419,7 @@ if __name__ == "__main__":
          image_width=image_width,
          roi_coords_x=trimmed_roi_coords[0],
          roi_coords_y=trimmed_roi_coords[1],
-         roi_mid_x=trimmed_roi_mid_x   
+         roi_mid_x=trimmed_roi_lobf_mid_x   
         )
 
         
@@ -426,7 +430,7 @@ if __name__ == "__main__":
         ax.plot(right, bottom, 'go')
   
         # plot_polygon(trimmed_roi_polygon, color="red", ax=ax)        
-        # ax.axvline(results["trimmed_roi_mid_x"])
+        # ax.axvline(results["trimmed_roi_lobf_mid_x"])
 
         colors = ["red", "green", "blue" ,"purple"]
 

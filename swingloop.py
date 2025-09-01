@@ -44,16 +44,17 @@ class CycleLoop:
         '''
         Returns self[current_index + 1] without changing the state of the Cycleloop
         '''
-        assert stp == 1 or stp == -1
+        if not ( stp == 1 or stp == -1):
+            raise ValueError("peek() only takes a stp of 1 or -1.")
 
         return self.iterable[self.current_index + stp ]
 
             
 
+if __name__ == "__main__":
+    sl = CycleLoop(["steve","frank","bob","dave"], 2)
 
-sl = CycleLoop(["steve","frank","bob","dave"], 2)
-
-print(sl.current)
-print(sl.peek1(1))
-print(sl.peek1(-1))
+    print(sl.current)
+    print(sl.peek1(1))
+    print(sl.peek1(-1))
 

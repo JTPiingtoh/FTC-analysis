@@ -1,10 +1,12 @@
 import numpy as np
 
-arr = np.array([2,3,5,6,1,2,4,5])
-arr_indexes = np.arange(arr.shape[0])
+flat_pairs = [((1,10),(3,10)),
+              ((6,5),(2,5))]
 
-empty = np.array([])
+flat_pairs = np.array(flat_pairs)
+max = np.max(flat_pairs[:,0,1])
 
-indexes = arr_indexes[arr == 5]
+x = np.mean(flat_pairs[flat_pairs[:,0,1] == np.max(flat_pairs[:,0,1])][0].T[0])
 
-assert empty.size > 0
+print(x)
+print(max)
