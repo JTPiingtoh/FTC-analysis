@@ -2,44 +2,29 @@ import numpy as np
 from PIL import Image
 
 from numpy.typing import ArrayLike
-from matplotlib import pyplot
 from roifile import ImagejRoi
 from tifffile import TiffFile
 from shapely import Polygon, box, intersection, Point, contains_xy
 from shapely.plotting import plot_line, plot_polygon, plot_points
 from typing import Literal
 import matplotlib.pyplot as plt
+import math
 
 from midpoint_lobf import roi_midpoint_lobf
+from midpoint_from_algo import roi_midpoint_from_algo
 from roi_rotate import roi_leftmost_rightmost, rotate_image_and_roi
 from roi_trim import trim_roi_coords_roi_based
+from conversions import mm_to_pixels, pixels_to_mm
 
-import math
 # BUG: Trim factors above 0.25 appears to break midpoint_lobf, which in turn
 # breaks lisee_roi_polygon, likely due to too much of the of the roi being trimmed.
 # For trim factors greater than 0.25, algorithic detection of midpoint will be needed instead.
 
 # TODO: needs to be able to take user input px/mm ratio
 
-# TODO: move these helper functions to different files.
-def mm_to_pixels(
-    mm: float|int,
-    image_height_px: float|int = 454,
-    image_height_cm: float|int = 3.5,
-    ) -> float:   
-    return ((mm / 10) * image_height_px) / image_height_cm
 
-def pixels_to_mm(
-    pixels: float|int,
-    image_height_px: float|int = 454,
-    image_height_cm: float|int = 3.5
-    ) -> float:
-    return (pixels * 
-                    10 * # convert to mm 
-                            image_height_cm) / image_height_px 
     
-
-# TODO: define lisee zone constants
+# TODO move lisee implementations to new file
 class LISEE_ZONE():
     """FTC measurement zones"""
     def MEDIAL(roi_width: float|int): 
@@ -48,12 +33,7 @@ class LISEE_ZONE():
     def LATERAL(roi_width: float|int): 
         return 0.5 * (1 / 3.0) * roi_width
 
-# Defines hori zones as per mm to pixel conversion
-# TODO: Is mixing a function with a class good design?
-class HORI_ZONE():
-    
-    MEDIAL: float = - mm_to_pixels(10)
-    LATERAL: float = mm_to_pixels(10)
+
     
 # print(HORI_ZONE.MEDIAL)
 
@@ -95,9 +75,7 @@ def lisee_CSA_polygon_function(
         image_width: float|int,
         roi_coords_x: np.ndarray,
         roi_coords_y: np.ndarray,
-        roi_mid_x: float|int
-        
-        
+        roi_mid_x: float|int         
 ) -> tuple[Polygon, Polygon, Polygon]:
     
     roi_left_x = float(min(roi_coords_x))
@@ -130,8 +108,6 @@ def lisee_CSA_polygon_function(
     assert isinstance(medial_roi_polygon, Polygon)
     assert isinstance(lateral_roi_polygon, Polygon)
 
-
-
     return lateral_roi_polygon, central_roi_polygon, medial_roi_polygon## TODO: remove trimmed
 
 
@@ -160,7 +136,6 @@ def line_length(
         total_length += math.sqrt(
             math.pow((x2 - x1), 2) + math.pow((y2 - y1), 2)
         )
-
 
     return total_length
 
@@ -261,24 +236,26 @@ def FTC_analysis(
 
     results_dict["trimmed_roi_coords"] = trimmed_roi_coords
 
-    
-
     trimmed_roi_lobf_mid_x = roi_midpoint_lobf(
         roi_coords_x=trimmed_roi_coords[0],
         roi_coords_y=trimmed_roi_coords[1],
-        polynomial_order=7
+        polynomial_order=4
     )
 
-    # TODO: add algo mid_x 
+    trimmed_roi_algo_mid_x = roi_midpoint_from_algo(
+        roi_coords_x=trimmed_roi_coords[0],
+        roi_coords_y=trimmed_roi_coords[1]
+    )
 
     results_dict["trimmed_roi_lobf_mid_x"] = trimmed_roi_lobf_mid_x
+    results_dict["trimmed_roi_algo_mid_x"] = trimmed_roi_algo_mid_x
 
     lisee_polygons = lisee_CSA_polygon_function(
          image_height=image_height,
          image_width=image_width,
          roi_coords_x=trimmed_roi_coords[0],
          roi_coords_y=trimmed_roi_coords[1],
-         roi_mid_x=trimmed_roi_lobf_mid_x   
+         roi_mid_x=trimmed_roi_algo_mid_x   
         )
 
 
@@ -349,7 +326,7 @@ def FTC_analysis(
     # print(lisee_lateral_roi_polygon.exterior.coords.xy)
     # print(contains_xy(lisee_lateral_roi_polygon, 183, 500))
 
-    # fig, ax = pyplot.subplots()
+    # fig, ax = plt.subplots()
 
     # ax.imshow(rotated_image)
     # plot_points(pnt1, ax=ax)
@@ -423,7 +400,7 @@ if __name__ == "__main__":
         )
 
         
-        fig ,ax = pyplot.subplots()      
+        fig ,ax = plt.subplots()      
         # fig.add_subfigure(results["img"])
         ax.imshow(rotated_image)
         ax.plot(left, top, 'go')
@@ -441,4 +418,4 @@ if __name__ == "__main__":
 
         
 
-        pyplot.show()
+        plt.show()
