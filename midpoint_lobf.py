@@ -53,8 +53,6 @@ def roi_midpoint_lobf(
     real_roots = lobf_roots[~np.iscomplex(lobf_roots)].real # ~ bitwise not
     positive_roots = real_roots[real_roots > 0] # complex and negative real numbers are disgarded 
 
-
-
     return closest_to(x=positive_roots, n=(roi_width/2) + roi_left) # numbers closest to half-width is calculated
 
 

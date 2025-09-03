@@ -12,48 +12,7 @@ import matplotlib.pyplot as plt
 from swingloop import CycleLoop
 
 from midpoint_lobf import roi_midpoint_lobf
-
-
-'''
-Finds the roi midpoint using an algorithm
-'''
-
-def intersecting_segment_coords(      
-    roi_coords_x: np.ndarray,
-    roi_coords_y: np.ndarray,
-    line: LineString,
-    # image_height: float|int
-) -> int:
-    '''From a list of coords, returns index of the coordinate with the lowest y value of ROI points that intersect 
-    a (vertical) line'''
-
-    assert roi_coords_x.shape == roi_coords_y.shape
-
-    max_y = roi_coords_y.max()
-    print(f"Initial max_y: {max_y}")
-    point_index = 0
-    
-
-    for i in range(roi_coords_x.shape[0] - 1):
-        point1 = roi_coords_x[i], roi_coords_y[i]
-        point2 = roi_coords_x[i+1], roi_coords_y[i+1]
-
-        poly_segment = LineString([point1, point2])
-
-        intersect = intersection(line, poly_segment)
-
-        if intersect:
-       
-            intersect_y = intersect.coords.xy[1][0]
-
-            print(f"intersect_y: {intersect_y}")
-            
-            if intersect_y < max_y:
-                point_index = i
-                max_y = intersect_y
-
-
-    return point_index
+from helpers import intersecting_segment_coords, line_start_index
 
 
 def roi_midpoint_from_algo(
@@ -63,42 +22,21 @@ def roi_midpoint_from_algo(
     '''
     Figures out roi by finding lowest y point on the top line of the roi. This function is called assuming that
     the roi has been trimmed, and therefore has 2 vertical lines on both sides of the trimmed roi.
-    '''
-    # Ensure trim #
-        
-    assert roi_coords_x.shape == roi_coords_y.shape
+    '''   
 
-    roi_left_x = float(min(roi_coords_x))
-    roi_right_x = float(max(roi_coords_x))
-
-    roi_top_x = float(min(roi_coords_y))
-    roi_bottom_x = float(max(roi_coords_y))
-    roi_width = float(roi_right_x - roi_left_x)
-
-
-    # Find topline using vertical ray from roi midpoint #         
-    roi_halfway_vertical_line = LineString(
-        [[roi_left_x + (roi_width/2.0), roi_bottom_x ], 
-        [roi_left_x + (roi_width/2.0), roi_top_x]]
-    )
-
-    top_line_intersect_index = intersecting_segment_coords(
+    top_line_intersect_index = line_start_index(
         roi_coords_x=roi_coords_x,
         roi_coords_y=roi_coords_y,
-        line=roi_halfway_vertical_line
+        intersect_loc="top"
     )
 
-    print(roi_coords_x[top_line_intersect_index], roi_coords_y[top_line_intersect_index])
-
-    # Iterate through top line, finding the lowest
-    
     roi_coords_x_cycle = CycleLoop(iterable=roi_coords_x, start_index=top_line_intersect_index)
     roi_coords_y_cycle = CycleLoop(iterable=roi_coords_y, start_index=top_line_intersect_index)
 
     iterator = 1
     edges = 0
     max_y = 0
-    med_x = []
+    med_x = 0
     iterations = 0
     MAX_ITERATIONS = 200
 
@@ -108,13 +46,22 @@ def roi_midpoint_from_algo(
     # TODO: handle straight lines
     while edges < 2:
 
+        roi_coords_x_cycle.step(iterator)
+        roi_coords_y_cycle.step(iterator)
         iterations += 1
+
         if iterations > MAX_ITERATIONS:
             raise RuntimeError(f"roi_mid_point_from_gradients() could not find midpoint after {MAX_ITERATIONS} iterations." \
                                "Roi may not have been trimmed.")
+        
         current_x = roi_coords_x_cycle.current
         next_x = roi_coords_x_cycle.peek1(iterator)
 
+        if next_x == current_x:
+            iterator *=- 1
+            edges += 1
+            continue
+            
         current_y = roi_coords_y_cycle.current
         if current_y > max_y:
             max_y = current_y
@@ -124,11 +71,7 @@ def roi_midpoint_from_algo(
         if current_y == next_y:            
             flat_pairs.append(((current_x, current_y), (next_x, next_y)))
 
-        if next_x == current_x:
-            iterator *=- 1
-            edges += 1
-
-        roi_coords_x_cycle.step(iterator)
+        
 
     if len(flat_pairs) > 0:
 
@@ -182,11 +125,6 @@ if __name__ == "__main__":
         trim_factor=0.25
         )
 
-        trimmed_roi_mid_x = roi_midpoint_lobf(
-        roi_coords_x=trimmed_roi_coords[0],
-        roi_coords_y=trimmed_roi_coords[1],
-        polynomial_order=4
-        )
 
         algo_mid_x = roi_midpoint_from_algo(
             roi_coords_x=trimmed_roi_coords[0],
