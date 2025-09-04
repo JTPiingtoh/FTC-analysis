@@ -14,7 +14,7 @@ from conversions import mm_to_pixels, pixels_to_mm
 from swingloop import CycleLoop
 from helpers import intersecting_segment_coords, line_start_index
 
-from sympy import Point, Line
+import sympy
 
 # Defines hori zones as per mm to pixel conversion
 # TODO: Is mixing a function with a class good design?
@@ -144,13 +144,13 @@ def get_hori_polygon(
             edges += 1
             continue
 
-        p2 = Point(current_x, current_y)
-        p3 = Point(next_x, next_y)
+        p2 = sympy.Point2D(current_x, current_y, evaluate=False)
+        p3 = sympy.Point2D(next_x, next_y, evaluate=False)
 
-        top_line_segment = Line(p2,p3)
+        top_line_segment = sympy.Line(p2,p3)
 
-        lateral_distance = top_line_segment.distance(Point(hori_lateral_bottom_coord[0], hori_lateral_bottom_coord[1]))
-        medial_distance = top_line_segment.distance(Point(hori_medial_bottom_coord[0], hori_medial_bottom_coord[1]))
+        lateral_distance = top_line_segment.distance(sympy.Point(hori_lateral_bottom_coord[0], hori_lateral_bottom_coord[1]))
+        medial_distance = top_line_segment.distance(sympy.Point(hori_medial_bottom_coord[0], hori_medial_bottom_coord[1]))
 
         lateral_weight = 1.0 / lateral_distance
         medial_weight = 1.0 / medial_distance
@@ -160,24 +160,18 @@ def get_hori_polygon(
             hori_lateral_closest_top_segment_index = top_roi_coords_x_cycle.current_index
             hori_lateral_thickness_px = lateral_distance
             hori_top_lateral_point = get_closest_point2d(p1 = hori_lateral_bottom_coord, p2 = p2.coordinates, p3 = p2.coordinates)
-            print(hori_top_lateral_point)
             continue
 
         elif medial_weight > hori_medial_max_weighted_distance:
             hori_medial_max_weighted_distance = medial_weight
             hori_medial_closest_top_segment_index = top_roi_coords_x_cycle.current_index
-            hori_medial_thickness_px - medial_distance
+            hori_medial_thickness_px = medial_distance
             hori_top_medial_point = get_closest_point2d(p1 = hori_medial_bottom_coord, p2 = p2.coordinates, p3 = p3.coordinates)
             continue
 
+    print(hori_lateral_bottom_coord)
+    print(hori_top_lateral_point)
 
-        
-        
-
-
-
-    # TODO: for the shortest line this will be the thickness, calculate the intercepting point for visualization
-    # TODO: draw line to image
 
 def hori_csa():
     '''
@@ -224,14 +218,15 @@ if __name__ == "__main__":
         )
 
         _ = get_hori_polygon(
-            roi_coords_x=rotated_roi_coords[:,0], # every column of the first row
-            roi_coords_y=rotated_roi_coords[:,1],
+            roi_coords_x=trimmed_roi_coords[0], # every column of the first row
+            roi_coords_y=trimmed_roi_coords[1],
             roi_mid_x=trimmed_roi_lobf_mid_x
         )
 
-        fig ,ax = plt.subplots()      
-        # fig.add_subfigure(results["img"])
-        ax.imshow(rotated_image)
+        fig, ax = plt.subplots()
+        # ax.imshow(rotated_image)
+        ax.plot(trimmed_roi_coords[0], trimmed_roi_coords[1])
+        plt.show()
   
         # plot_polygon(trimmed_roi_polygon, color="red", ax=ax)        
         # ax.axvline(results["trimmed_roi_lobf_mid_x"])

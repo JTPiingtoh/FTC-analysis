@@ -47,14 +47,18 @@ class CycleLoop:
         if not ( stp == 1 or stp == -1):
             raise ValueError("peek() only takes a stp of 1 or -1.")
 
-        return self.iterable[self.current_index + stp ]
+        peek_index = self.current_index + stp
+        if peek_index > self.MAX_INDEX:
+            return self.iterable[0]
+
+        return self.iterable[peek_index]
 
             
 
 if __name__ == "__main__":
-    sl = CycleLoop(["steve","frank","bob","dave"], 2)
+    sl = CycleLoop(["steve","frank","bob","dave"], 0)
 
     print(sl.current)
-    print(sl.peek1(1))
     print(sl.peek1(-1))
+
 
