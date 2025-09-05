@@ -67,18 +67,19 @@ def get_closest_point2d(p1, p2, p3):
         return (p2x, p2y)
     else:
         return (p3x, p3y)
-
     
 
 
-
+# BUG: distance needs to be bounded
+# TODO: prevent iterating over same points
 def get_hori_polygon(
     roi_coords_x: np.ndarray,
     roi_coords_y: np.ndarray,
-    roi_mid_x: float|int       
+    roi_mid_x: float|int,
+    ax
 ):
-    hori_lateral_x = roi_mid_x - HORI_ZONE.LATERAL
-    hori_medial_x = roi_mid_x - HORI_ZONE.MEDIAL
+    hori_lateral_x = roi_mid_x + HORI_ZONE.LATERAL
+    hori_medial_x = roi_mid_x + HORI_ZONE.MEDIAL
     roi_top_x = float(min(roi_coords_y))
     roi_bottom_x = float(max(roi_coords_y))
 
@@ -116,14 +117,14 @@ def get_hori_polygon(
     iterations = 0
     MAX_ITERATIONS = 200
 
-    hori_lateral_closest_top_segment_index = 0
+
     hori_lateral_max_weighted_distance = 0 # use inverse of distance to allow comparion with 0
     hori_lateral_thickness_px = 0
-    hori_top_lateral_point = 0
+    hori_lateral_top_coord = 0
 
-    hori_medial_closest_top_segment_index = 0
     hori_medial_max_weighted_distance = 0
     hori_medial_thickness_px = 0
+    hori_medial_top_coord = 0
 
     while edges < 2:
 
@@ -137,6 +138,8 @@ def get_hori_polygon(
         
         current_x, current_y = top_roi_coords_x_cycle.current, top_roi_coords_y_cycle.current
         next_x, next_y = top_roi_coords_x_cycle.peek1(iterator), top_roi_coords_y_cycle.peek1(iterator) 
+
+        ax.plot(current_x, current_y, 'r+')
 
         # detects if edge reached
         if next_x == current_x:
@@ -152,25 +155,32 @@ def get_hori_polygon(
         lateral_distance = top_line_segment.distance(sympy.Point(hori_lateral_bottom_coord[0], hori_lateral_bottom_coord[1]))
         medial_distance = top_line_segment.distance(sympy.Point(hori_medial_bottom_coord[0], hori_medial_bottom_coord[1]))
 
+        medial_p4 = get_closest_point2d(hori_medial_bottom_coord, p2 , p3)
+        medial_distance = np.linalg.norm(np.array(medial_p4, dtype = 'float') - np.array(hori_medial_bottom_coord, dtype = 'float'))
+
+        lateral_p4 = get_closest_point2d(hori_lateral_bottom_coord, p2 , p3)
+        lateral_distance = np.linalg.norm(np.array(lateral_p4, dtype = 'float') - np.array(hori_lateral_bottom_coord, dtype = 'float'))
+
         lateral_weight = 1.0 / lateral_distance
         medial_weight = 1.0 / medial_distance
 
-        if lateral_weight > hori_lateral_max_weighted_distance:
-            hori_lateral_max_weighted_distance = lateral_weight
-            hori_lateral_closest_top_segment_index = top_roi_coords_x_cycle.current_index
-            hori_lateral_thickness_px = lateral_distance
-            hori_top_lateral_point = get_closest_point2d(p1 = hori_lateral_bottom_coord, p2 = p2.coordinates, p3 = p2.coordinates)
-            continue
+        if medial_weight > hori_medial_max_weighted_distance:
 
-        elif medial_weight > hori_medial_max_weighted_distance:
             hori_medial_max_weighted_distance = medial_weight
-            hori_medial_closest_top_segment_index = top_roi_coords_x_cycle.current_index
+
             hori_medial_thickness_px = medial_distance
-            hori_top_medial_point = get_closest_point2d(p1 = hori_medial_bottom_coord, p2 = p2.coordinates, p3 = p3.coordinates)
+            hori_medial_top_coord = medial_p4
             continue
 
-    print(hori_lateral_bottom_coord)
-    print(hori_top_lateral_point)
+        elif lateral_weight > hori_lateral_max_weighted_distance:
+
+            hori_lateral_max_weighted_distance = lateral_weight
+
+            hori_lateral_thickness_px = lateral_distance
+            hori_lateral_top_coord = lateral_p4
+            continue
+
+    return hori_medial_top_coord, hori_medial_bottom_coord, hori_lateral_top_coord, hori_lateral_bottom_coord
 
 
 def hori_csa():
@@ -217,15 +227,22 @@ if __name__ == "__main__":
         roi_coords_y=trimmed_roi_coords[1],
         )
 
-        _ = get_hori_polygon(
-            roi_coords_x=trimmed_roi_coords[0], # every column of the first row
-            roi_coords_y=trimmed_roi_coords[1],
-            roi_mid_x=trimmed_roi_lobf_mid_x
-        )
-
         fig, ax = plt.subplots()
         # ax.imshow(rotated_image)
-        ax.plot(trimmed_roi_coords[0], trimmed_roi_coords[1])
+        ax.imshow(image_array)
+        ax.plot(trimmed_roi_coords[0], trimmed_roi_coords[1], 'bo', linestyle='-')
+
+        hori_medial_top_coord, hori_medial_bottom_coord, hori_lateral_top_coord, hori_lateral_bottom_coord = get_hori_polygon(
+            roi_coords_x=trimmed_roi_coords[0], # every column of the first row
+            roi_coords_y=trimmed_roi_coords[1],
+            roi_mid_x=trimmed_roi_lobf_mid_x,
+            ax=ax
+        )
+
+        
+        ax.plot([hori_medial_bottom_coord[0], hori_medial_top_coord[0]],[hori_medial_bottom_coord[1], hori_medial_top_coord[1]] , 'ro')
+        ax.plot([hori_lateral_bottom_coord[0], hori_lateral_top_coord[0]],[hori_lateral_bottom_coord[1], hori_lateral_top_coord[1]] , 'go')
+ 
         plt.show()
   
         # plot_polygon(trimmed_roi_polygon, color="red", ax=ax)        
