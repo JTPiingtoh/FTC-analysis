@@ -1,9 +1,8 @@
 import numpy as np
 from numpy.polynomial.polynomial import polyvalfromroots
 
-arr = np.array([[1,2],
-               [2,4]]).flatten()
+x = np.array([1,2,3])
+y = np.array([4,5,6])
+xy = np.vstack([x,y]).T
 
-x = polyvalfromroots(4, arr)
-
-print(x)
+print(xy)

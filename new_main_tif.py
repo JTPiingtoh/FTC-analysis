@@ -71,6 +71,7 @@ if __name__ == "__main__":
                 roi_bytes = tif.imagej_metadata['ROI'] # KeyError
                 roi = ImagejRoi.frombytes(roi_bytes)
                 FTC_results_dict = FTC_analysis(image_array=image_array, roi=roi)
+                FTC_results_dict["image_name"] = filename
                 results_list.append(FTC_results_dict)
 
                 analysed_image_path = os.path.join(anaylsed_images_dir, f"{filename} ANALYSED{extension}").replace('\\', '/')

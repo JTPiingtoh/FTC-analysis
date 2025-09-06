@@ -16,6 +16,8 @@ from roi_rotate import roi_leftmost_rightmost, rotate_image_and_roi
 from roi_trim import trim_roi_coords_roi_based
 from conversions import mm_to_pixels, pixels_to_mm
 
+from hori import get_hori_csa_px, get_hori_central_thickness_px, get_hori_coords_thickness
+
 # BUG: Trim factors above 0.25 appears to break midpoint_lobf, which in turn
 # breaks lisee_roi_polygon, likely due to too much of the of the roi being trimmed.
 # For trim factors greater than 0.25, algorithic detection of midpoint will be needed instead.
@@ -85,8 +87,8 @@ def lisee_CSA_polygon_function(
     medial_adjust: float = LISEE_ZONE.MEDIAL(roi_width)
     lateral_adjust: float = LISEE_ZONE.LATERAL(roi_width)
 
-    medial_x = float(roi_mid_x[0] + medial_adjust)
-    lateral_x = float(roi_mid_x[0] + lateral_adjust)
+    medial_x = float(roi_mid_x + medial_adjust)
+    lateral_x = float(roi_mid_x + lateral_adjust)
 
     trimmed_roi_polygon = Polygon(np.column_stack((roi_coords_x, roi_coords_y)))
 
@@ -247,9 +249,6 @@ def FTC_analysis(
         roi_coords_y=trimmed_roi_coords[1]
     )
 
-    results_dict["trimmed_roi_lobf_mid_x"] = trimmed_roi_lobf_mid_x
-    results_dict["trimmed_roi_algo_mid_x"] = trimmed_roi_algo_mid_x
-
     lisee_polygons = lisee_CSA_polygon_function(
          image_height=image_height,
          image_width=image_width,
@@ -257,7 +256,7 @@ def FTC_analysis(
          roi_coords_y=trimmed_roi_coords[1],
          roi_mid_x=trimmed_roi_algo_mid_x   
         )
-
+    
 
     # TODO: save annotated image to dict, remove polygons from dict
     plt.ioff()
@@ -268,18 +267,16 @@ def FTC_analysis(
             plot_polygon(polygon=polygon, ax=ax, color=colors[i])
     
     results_dict["img"] = fig
-    
-    results_dict["lisee_polygons"] = lisee_polygons
-    results_dict["lisee_lateral_polygon"], results_dict["lisee_central_polygon"], results_dict["lisee_medial_polygon"] = lisee_polygons
+
     lisee_lateral_roi_polygon, lisee_central_roi_polygon, lisee_medial_roi_polygon = lisee_polygons
 
     results_dict["lisee_lateral_pixels"] = lisee_lateral_roi_polygon.area
     results_dict["lisee_central_pixels"] = lisee_central_roi_polygon.area
     results_dict["lisee_medial_pixels"] = lisee_medial_roi_polygon.area
 
-    results_dict["lisee_lateral_area_mm"] = pixels_to_mm(lisee_lateral_roi_polygon.area)
-    results_dict["lisee_central_area_mm"] = pixels_to_mm(lisee_central_roi_polygon.area)
-    results_dict["lisee_medial_area_mm"] = pixels_to_mm(lisee_medial_roi_polygon.area)
+    results_dict["lisee_lateral_area_mm"] = lisee_lateral_roi_polygon.area * (pixels_to_mm(1) ** 2)
+    results_dict["lisee_central_area_mm"] = lisee_central_roi_polygon.area * (pixels_to_mm(1) ** 2)
+    results_dict["lisee_medial_area_mm"] = lisee_medial_roi_polygon.area * (pixels_to_mm(1) ** 2)
 
     lisee_lateral_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_lateral_roi_polygon)
     lisee_central_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_central_roi_polygon)
@@ -289,9 +286,40 @@ def FTC_analysis(
     results_dict["lisee_central_average_thickness_pixles"] = pixels_to_mm(lisee_central_average_thickness_pixles)
     results_dict["lisee_medial_average_thickness_pixles"]  = pixels_to_mm(lisee_medial_average_thickness_pixles )
 
-    results_dict["lisee_lateral_average_thickness_mm"] = lisee_lateral_average_thickness_pixles
-    results_dict["lisee_central_average_thickness_mm"] = lisee_central_average_thickness_pixles
-    results_dict["lisee_medial_average_thickness_mm"]  = lisee_medial_average_thickness_pixles 
+    results_dict["Lisee_Lateral_average_mm_thickness"] = lisee_lateral_average_thickness_pixles
+    results_dict["Lisee_Intercondyl_average_mm_thickness"] = lisee_central_average_thickness_pixles
+    results_dict["Lisee_Medial_average_mm_thickness"]  = lisee_medial_average_thickness_pixles 
+
+    hori_coords, hori_ML_thicknesses = get_hori_coords_thickness(
+        roi_coords_x=trimmed_roi_coords[0], # every column of the first row
+        roi_coords_y=trimmed_roi_coords[1],
+        roi_mid_x=trimmed_roi_algo_mid_x,
+        return_thickness_px=True
+    )
+
+    hori_medial_top_coord, hori_medial_bottom_coord, hori_lateral_top_coord, hori_lateral_bottom_coord = hori_coords
+    hori_medial_thickness_px, hori_lateral_thickness_px = hori_ML_thicknesses
+
+    hori_csa_px = get_hori_csa_px(
+        image_height=image_height,
+        image_width=image_width,
+        roi_coords_x=trimmed_roi_coords[0],
+        roi_coords_y=trimmed_roi_coords[1],
+        hori_coords=hori_coords,
+        roi_mid_x=trimmed_roi_algo_mid_x,
+    )
+
+    hori_central_thickness_px = get_hori_central_thickness_px(
+        image_height=image_height,
+        roi_coords_x=trimmed_roi_coords[0],
+        roi_coords_y=trimmed_roi_coords[1],
+        roi_mid_x=trimmed_roi_algo_mid_x,   
+        )
+    
+    results_dict["Hori_medial_thickness_mm"] = pixels_to_mm(hori_medial_thickness_px)
+    results_dict["Hori_lateral_thickness_mm"] = pixels_to_mm(hori_lateral_thickness_px)
+    results_dict["Hori_central_thickness_mm"] = pixels_to_mm(hori_central_thickness_px)
+    results_dict["Hori_csa_mm"] = hori_csa_px * (pixels_to_mm(1) ** 2)
 
     # TODO: add echo intensity
     rotated_image_array = np.array(rotated_image)
@@ -341,13 +369,6 @@ def FTC_analysis(
 
     return results_dict
     
-
-    # Calcualte Lisee EIs
-
-    # Calcualte Hori thicknesses
-
-    # Calculate Hori CSA
-
 
 
 '''
