@@ -24,14 +24,14 @@ def roi_midpoint_from_algo(
     the roi has been trimmed, and therefore has 2 vertical lines on both sides of the trimmed roi.
     '''   
 
-    top_line_intersect_index = line_start_index(
+    start_index = line_start_index(
         roi_coords_x=roi_coords_x,
         roi_coords_y=roi_coords_y,
         intersect_loc="top"
     )
 
-    roi_coords_x_cycle = CycleLoop(iterable=roi_coords_x, start_index=top_line_intersect_index)
-    roi_coords_y_cycle = CycleLoop(iterable=roi_coords_y, start_index=top_line_intersect_index)
+    roi_coords_x_cycle = CycleLoop(iterable=roi_coords_x, start_index=start_index)
+    roi_coords_y_cycle = CycleLoop(iterable=roi_coords_y, start_index=start_index)
 
     iterator = 1
     edges = 0
@@ -46,10 +46,6 @@ def roi_midpoint_from_algo(
     # TODO: handle straight lines
     while edges < 2:
 
-        roi_coords_x_cycle.step(iterator)
-        roi_coords_y_cycle.step(iterator)
-        iterations += 1
-
         if iterations > MAX_ITERATIONS:
             raise RuntimeError(f"roi_mid_point_from_gradients() could not find midpoint after {MAX_ITERATIONS} iterations." \
                                "Roi may not have been trimmed.")
@@ -60,6 +56,8 @@ def roi_midpoint_from_algo(
         if next_x == current_x:
             iterator *=- 1
             edges += 1
+            roi_coords_x_cycle.set_curret(start_index + iterator)
+            roi_coords_y_cycle.set_curret(start_index + iterator)
             continue
             
         current_y = roi_coords_y_cycle.current
@@ -70,6 +68,10 @@ def roi_midpoint_from_algo(
         next_y = roi_coords_y_cycle.peek1(iterator)
         if current_y == next_y:            
             flat_pairs.append(((current_x, current_y), (next_x, next_y)))
+
+        roi_coords_x_cycle.step(iterator)
+        roi_coords_y_cycle.step(iterator)
+        iterations += 1
 
         
 

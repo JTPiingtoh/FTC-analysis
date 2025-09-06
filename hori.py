@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.polynomial import polynomial
 from PIL import Image
 
 from roifile import ImagejRoi
@@ -72,12 +73,16 @@ def get_closest_point2d(p1, p2, p3):
 
 # BUG: distance needs to be bounded
 # TODO: prevent iterating over same points
-def get_hori_polygon(
+def get_hori_coords_thickness(
     roi_coords_x: np.ndarray,
     roi_coords_y: np.ndarray,
     roi_mid_x: float|int,
-    ax
+    return_thickness_px: bool = True
 ):
+    '''
+    Used for obtaining the LHS and RHS coords for the hori ROI. Also returns the medial and lateral thickness measurements.
+    '''
+
     hori_lateral_x = roi_mid_x + HORI_ZONE.LATERAL
     hori_medial_x = roi_mid_x + HORI_ZONE.MEDIAL
     roi_top_x = float(min(roi_coords_y))
@@ -101,22 +106,19 @@ def get_hori_polygon(
         return_intersect_coord=True
     )
 
-    # TODO: iterate through top line, find shortest disance
-
-    top_line_intersect_index = line_start_index(
+    start_index = line_start_index(
         roi_coords_x=roi_coords_x,
         roi_coords_y=roi_coords_y,
         intersect_loc="top"
     )
 
-    top_roi_coords_x_cycle = CycleLoop(iterable=roi_coords_x, start_index=top_line_intersect_index)
-    top_roi_coords_y_cycle = CycleLoop(iterable=roi_coords_y, start_index=top_line_intersect_index)
+    top_roi_coords_x_cycle = CycleLoop(iterable=roi_coords_x, start_index=start_index)
+    top_roi_coords_y_cycle = CycleLoop(iterable=roi_coords_y, start_index=start_index)
     
     iterator = 1
     edges = 0
     iterations = 0
     MAX_ITERATIONS = 200
-
 
     hori_lateral_max_weighted_distance = 0 # use inverse of distance to allow comparion with 0
     hori_lateral_thickness_px = 0
@@ -128,10 +130,6 @@ def get_hori_polygon(
 
     while edges < 2:
 
-        top_roi_coords_x_cycle.step(iterator)
-        top_roi_coords_y_cycle.step(iterator)
-        iterations += 1
-
         if iterations > MAX_ITERATIONS:
             raise RuntimeError(f"get_roi_polygon() could not find midpoint after {MAX_ITERATIONS} iterations." \
                                "Roi may not have been trimmed.")
@@ -139,21 +137,16 @@ def get_hori_polygon(
         current_x, current_y = top_roi_coords_x_cycle.current, top_roi_coords_y_cycle.current
         next_x, next_y = top_roi_coords_x_cycle.peek1(iterator), top_roi_coords_y_cycle.peek1(iterator) 
 
-        ax.plot(current_x, current_y, 'r+')
-
         # detects if edge reached
         if next_x == current_x:
             iterator *=- 1
             edges += 1
+            top_roi_coords_x_cycle.set_curret(start_index + iterator)
+            top_roi_coords_y_cycle.set_curret(start_index + iterator)
             continue
 
         p2 = sympy.Point2D(current_x, current_y, evaluate=False)
         p3 = sympy.Point2D(next_x, next_y, evaluate=False)
-
-        top_line_segment = sympy.Line(p2,p3)
-
-        lateral_distance = top_line_segment.distance(sympy.Point(hori_lateral_bottom_coord[0], hori_lateral_bottom_coord[1]))
-        medial_distance = top_line_segment.distance(sympy.Point(hori_medial_bottom_coord[0], hori_medial_bottom_coord[1]))
 
         medial_p4 = get_closest_point2d(hori_medial_bottom_coord, p2 , p3)
         medial_distance = np.linalg.norm(np.array(medial_p4, dtype = 'float') - np.array(hori_medial_bottom_coord, dtype = 'float'))
@@ -170,23 +163,66 @@ def get_hori_polygon(
 
             hori_medial_thickness_px = medial_distance
             hori_medial_top_coord = medial_p4
-            continue
-
+            
         elif lateral_weight > hori_lateral_max_weighted_distance:
 
             hori_lateral_max_weighted_distance = lateral_weight
 
             hori_lateral_thickness_px = lateral_distance
             hori_lateral_top_coord = lateral_p4
-            continue
+        
+        top_roi_coords_x_cycle.step(iterator)
+        top_roi_coords_y_cycle.step(iterator)
+        iterations += 1
 
-    return hori_medial_top_coord, hori_medial_bottom_coord, hori_lateral_top_coord, hori_lateral_bottom_coord
+    hori_coords = (hori_medial_top_coord, hori_medial_bottom_coord, hori_lateral_top_coord, hori_lateral_bottom_coord)
+    hori_LM_thicknesses = (hori_medial_thickness_px, hori_lateral_thickness_px)
+    
+    if return_thickness_px:
+        return hori_coords, hori_LM_thicknesses
+
+    return hori_coords
 
 
-def hori_csa():
+def hori_csa(
+    image_height,
+    image_width,
+    roi_coords_x: np.ndarray,
+    roi_coords_y: np.ndarray,
+    hori_coords: np.ndarray,
+    roi_mid_x: float | int,
+    ax
+) -> float:
     '''
     Calculates hori csa of image roi
     '''
+    # TODO: Creat polygon made made hori_coords
+    hori_medial_top_coord, hori_medial_bottom_coord, hori_lateral_top_coord, hori_lateral_bottom_coord = hori_coords
+    
+    hori_medial = np.array([hori_medial_top_coord, hori_medial_bottom_coord])
+    hori_lateral = np.array([hori_lateral_top_coord, hori_lateral_bottom_coord])
+
+    # where lines intercept with the top and bottom of the image
+    medial_top_intercept_x = polynomial.polyvalfromroots(image_height, hori_medial[:,1], hori_medial[:,0])
+    medial_bottom_intercept_x = polynomial.polyvalfromroots(0, hori_medial[:,1], hori_medial[:,0])
+
+    lateral_top_intercept_x = polynomial.polyvalfromroots(image_height, hori_lateral[:,1], hori_lateral[:,0])
+    lateral_bottom_intercept_x = polynomial.polyvalfromroots(0, hori_lateral[:,1], hori_lateral[:,0])
+
+    medial_polygon = Polygon(
+        [
+            [0,0],
+            [0, image_height],
+            [medial_bottom_intercept_x, 0],
+            [medial_top_intercept_x, image_height]
+        ]
+    )
+
+    plot_polygon(medial_polygon, ax=ax)
+
+
+
+
 
 if __name__ == "__main__":
 
@@ -222,37 +258,45 @@ if __name__ == "__main__":
         trim_factor=0.25
         )
 
-        trimmed_roi_lobf_mid_x = roi_midpoint_from_algo(
+        trimmed_roi_algo_mid_x = roi_midpoint_from_algo(
         roi_coords_x=trimmed_roi_coords[0],
         roi_coords_y=trimmed_roi_coords[1],
         )
 
         fig, ax = plt.subplots()
         # ax.imshow(rotated_image)
-        ax.imshow(image_array)
+        ax.imshow(rotated_image)
         ax.plot(trimmed_roi_coords[0], trimmed_roi_coords[1], 'bo', linestyle='-')
 
-        hori_medial_top_coord, hori_medial_bottom_coord, hori_lateral_top_coord, hori_lateral_bottom_coord = get_hori_polygon(
+        hori_coords, hori_LM_thicknesses = get_hori_coords_thickness(
             roi_coords_x=trimmed_roi_coords[0], # every column of the first row
             roi_coords_y=trimmed_roi_coords[1],
-            roi_mid_x=trimmed_roi_lobf_mid_x,
-            ax=ax
+            roi_mid_x=trimmed_roi_algo_mid_x,
+            return_thickness_px=True
         )
 
+        hori_medial_top_coord, hori_medial_bottom_coord, hori_lateral_top_coord, hori_lateral_bottom_coord = hori_coords
         
         ax.plot([hori_medial_bottom_coord[0], hori_medial_top_coord[0]],[hori_medial_bottom_coord[1], hori_medial_top_coord[1]] , 'ro')
         ax.plot([hori_lateral_bottom_coord[0], hori_lateral_top_coord[0]],[hori_lateral_bottom_coord[1], hori_lateral_top_coord[1]] , 'go')
+
+        hori_csa(
+            image_height=image_height,
+            image_width=image_width,
+            roi_coords_x=trimmed_roi_coords[0],
+            roi_coords_y=trimmed_roi_coords[1],
+            hori_coords=hori_coords,
+            roi_mid_x=trimmed_roi_algo_mid_x,
+            ax=ax
+        )
  
         plt.show()
   
         # plot_polygon(trimmed_roi_polygon, color="red", ax=ax)        
-        # ax.axvline(results["trimmed_roi_lobf_mid_x"])
+        # ax.axvline(results["trimmed_roi_algo_mid_x"])
 
         colors = ["red", "green", "blue" ,"purple"]
 
         # print(f'Central av thickness: {results["lisee_lateral_average_thickness_mm"]}')
 
 
-        
-
-        plt.show()
