@@ -13,7 +13,7 @@ from roi_rotate import roi_leftmost_rightmost, rotate_image_and_roi
 from roi_trim import trim_roi_coords_roi_based
 from conversions import mm_to_pixels, pixels_to_mm
 from swingloop import CycleLoop
-from helpers import intersecting_segment_coords, line_start_index
+from test_code.helpers import intersecting_segment_coords, line_start_index
 
 import sympy
 

@@ -6,23 +6,37 @@ def get_average_ei(
     image_width: int,
     image_height: int,
     polygon: Polygon,
-    image_array: np.array):
+    image_array: np.array,
+    
+    ):
     
     average_ei = 0
     n = 0
 
+    x_coords, y_coords = polygon.exterior.coords.xy
+
+    # print(x_coords, y_coords)
+
+    left = int(np.min(x_coords))
+    right = int(np.max(x_coords))
+    top = int(np.min(y_coords))
+    bottom = int(np.max(y_coords))
+
     # iterate through points of the image
-    for x in range(image_height):
-        for y in range(image_width):
+    for x in range(left, right - 1):
+        for y in range(top, bottom - 1):
             
             if not polygon.contains(Point(x, y)):
                 continue
             
-            average_ei = ( (average_ei * n) + image_array[x][y] ) / (n + 1)
+            # x and y are flipped for imagej rois 
+            average_ei = ( (average_ei * n) + image_array[y][x] ) / (n + 1)
             n += 1
 
 
     return average_ei
+
+
 
 
 '''
@@ -43,7 +57,7 @@ if __name__ == "__main__":
     from roi_trim import trim_roi_coords_roi_based
     from lisee import lisee_CSA_polygon_function, lisee_zone_average_thickness
 
-    with TiffFile('14_annotated_with_border.tif') as tif:
+    with TiffFile('14_annotated.tif') as tif:
         
         image_array = tif.pages[0].asarray()
     
@@ -92,8 +106,8 @@ if __name__ == "__main__":
         fig ,ax = plt.subplots()      
         # fig.add_subfigure(results["img"])
         ax.imshow(rotated_image)
-        ax.plot(left, top, 'go')
-        ax.plot(right, bottom, 'go')
+        # ax.plot(left, top, 'go')
+        # ax.plot(right, bottom, 'go')
   
         # plot_polygon(trimmed_roi_polygon, color="red", ax=ax)        
         # ax.axvline(results["trimmed_roi_lobf_mid_x"])

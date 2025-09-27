@@ -1,7 +1,7 @@
 import os
 from tqdm import tqdm
 import pandas as pd
-from analysis import full_analysis
+from old_code.analysis import full_analysis
 import tkinter as tk
 from tkinter import filedialog
 

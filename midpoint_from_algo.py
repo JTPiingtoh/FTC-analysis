@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from swingloop import CycleLoop
 
 from midpoint_lobf import roi_midpoint_lobf
-from helpers import intersecting_segment_coords, line_start_index
+from test_code.helpers import intersecting_segment_coords, line_start_index
 
 
 def roi_midpoint_from_algo(
