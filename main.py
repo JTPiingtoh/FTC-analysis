@@ -25,6 +25,7 @@ def get_folder_directory():
 
 
 if __name__ == "__main__":
+    
     input_directory = get_folder_directory()
 
     if input_directory:
