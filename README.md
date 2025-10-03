@@ -1,0 +1,2 @@
+Used to semi_automate the analysis of femoral trochlear cartilage ultrasound images. Typically measurements are taken using ImageJ/Fiji. To streamline this process, a directory containing .tiff files can be supplied, with a region of interest being highlighted using ImageJ's polygon tool.
+Common measurements can then be taken from these images, including thickness, cross sectional area, and echo intensity, which are then automatically saved to an excel spreadsheet.
