@@ -1,4 +1,5 @@
 import os
+import platform
 from tqdm import tqdm
 import pandas as pd
 import tkinter as tk
@@ -28,6 +29,8 @@ if __name__ == "__main__":
     
     input_directory = get_folder_directory()
 
+    # TODO: check if any files are tiffs
+
     if input_directory:
         
         # Create new folder to store Excel/csv and analysed images
@@ -53,7 +56,8 @@ if __name__ == "__main__":
     '''
     07/02/2025 - Improved path strings, should resolve permission error alongside writing to csv. If this code still break, use os.chmod 664
     '''
-    
+
+
     for file in os.listdir(input_directory):
 
         image_path = os.path.join(input_directory, file).replace('\\', '/')
@@ -99,6 +103,9 @@ if __name__ == "__main__":
     csv_file_path = os.path.join(output_dir, f"{input_file_name} ANALYSED.csv").replace('\\', '/')
     results_df.to_csv(csv_file_path, index=False)
 
-    os.startfile(output_base_dir)
+    # open the output dir (WINDOWS ONLY)
+    if platform.system() == 'Windows':
+        os.startfile(output_base_dir)
+
 
         
