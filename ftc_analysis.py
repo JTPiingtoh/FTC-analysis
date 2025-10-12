@@ -60,8 +60,7 @@ def FTC_analysis(
     trim_factor=0.25
     )
 
-    results_dict["trimmed_roi_coords"] = trimmed_roi_coords
-
+    # TODO: add check for midpoint
     trimmed_roi_lobf_mid_x = roi_midpoint_lobf(
         roi_coords_x=trimmed_roi_coords[0],
         roi_coords_y=trimmed_roi_coords[1],
@@ -89,8 +88,7 @@ def FTC_analysis(
     colors = ["red", "green", "blue"]
     for i, polygon in enumerate(lisee_polygons):
             plot_polygon(polygon=polygon, ax=ax, color=colors[i])
-    
-    results_dict["img"] = fig
+
 
     lisee_lateral_roi_polygon, lisee_central_roi_polygon, lisee_medial_roi_polygon = lisee_polygons
 

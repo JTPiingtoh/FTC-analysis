@@ -1,9 +1,10 @@
-# Specific files
+# Specific files/ dirs
 messing.py
 _requirements.txt
 old_code
-
+test_code
 test_images
+check_platform.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
