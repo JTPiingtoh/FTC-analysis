@@ -72,45 +72,7 @@ def FTC_analysis(
         roi_coords_y=trimmed_roi_coords[1]
     )
 
-    lisee_polygons = lisee_CSA_polygon_function(
-         image_height=image_height,
-         image_width=image_width,
-         roi_coords_x=trimmed_roi_coords[0],
-         roi_coords_y=trimmed_roi_coords[1],
-         roi_mid_x=trimmed_roi_algo_mid_x   
-        )
-    
 
-    # TODO: save annotated image to dict, remove polygons from dict
-    plt.ioff()
-    fig, ax = plt.subplots()
-    ax.imshow(rotated_image)
-    colors = ["red", "green", "blue"]
-    for i, polygon in enumerate(lisee_polygons):
-            plot_polygon(polygon=polygon, ax=ax, color=colors[i])
-
-
-    lisee_lateral_roi_polygon, lisee_central_roi_polygon, lisee_medial_roi_polygon = lisee_polygons
-
-    results_dict["lisee_lateral_pixels"] = lisee_lateral_roi_polygon.area
-    results_dict["lisee_central_pixels"] = lisee_central_roi_polygon.area
-    results_dict["lisee_medial_pixels"] = lisee_medial_roi_polygon.area
-
-    results_dict["lisee_lateral_area_mm"] = lisee_lateral_roi_polygon.area * (pixels_to_mm(1) ** 2)
-    results_dict["lisee_central_area_mm"] = lisee_central_roi_polygon.area * (pixels_to_mm(1) ** 2)
-    results_dict["lisee_medial_area_mm"] = lisee_medial_roi_polygon.area * (pixels_to_mm(1) ** 2)
-
-    lisee_lateral_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_lateral_roi_polygon)
-    lisee_central_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_central_roi_polygon)
-    lisee_medial_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_medial_roi_polygon)
-
-    results_dict["lisee_lateral_average_thickness_pixles"] = lisee_lateral_average_thickness_pixles
-    results_dict["lisee_central_average_thickness_pixles"] = lisee_central_average_thickness_pixles
-    results_dict["lisee_medial_average_thickness_pixles"]  = lisee_medial_average_thickness_pixles 
-
-    results_dict["Lisee_Lateral_average_mm_thickness"] =     pixels_to_mm(lisee_lateral_average_thickness_pixles)
-    results_dict["Lisee_Intercondyl_average_mm_thickness"] = pixels_to_mm(lisee_central_average_thickness_pixles)
-    results_dict["Lisee_Medial_average_mm_thickness"]  =     pixels_to_mm(lisee_medial_average_thickness_pixles)
 
     hori_coords, hori_ML_thicknesses = get_hori_coords_thickness(
         roi_coords_x=trimmed_roi_coords[0], # every column of the first row
@@ -119,7 +81,6 @@ def FTC_analysis(
         return_thickness_px=True
     )
 
-    hori_medial_top_coord, hori_medial_bottom_coord, hori_lateral_top_coord, hori_lateral_bottom_coord = hori_coords
     hori_medial_thickness_px, hori_lateral_thickness_px = hori_ML_thicknesses
 
     hori_csa_px = get_hori_csa_px(
@@ -143,6 +104,37 @@ def FTC_analysis(
     results_dict["Hori_central_thickness_mm"] = pixels_to_mm(hori_central_thickness_px)
     results_dict["Hori_csa_mm"] = hori_csa_px * (pixels_to_mm(1) ** 2)
 
+    lisee_polygons = lisee_CSA_polygon_function(
+        image_height=image_height,
+        image_width=image_width,
+        roi_coords_x=trimmed_roi_coords[0],
+        roi_coords_y=trimmed_roi_coords[1],
+        roi_mid_x=trimmed_roi_algo_mid_x   
+    )
+    
+
+
+    lisee_lateral_roi_polygon, lisee_central_roi_polygon, lisee_medial_roi_polygon = lisee_polygons
+    lisee_lateral_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_lateral_roi_polygon)
+    lisee_central_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_central_roi_polygon)
+    lisee_medial_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_medial_roi_polygon)
+
+    results_dict["Lisee_Medial_average_mm_thickness"]  =     pixels_to_mm(lisee_medial_average_thickness_pixles)
+    results_dict["Lisee_Lateral_average_mm_thickness"] =     pixels_to_mm(lisee_lateral_average_thickness_pixles)
+    results_dict["Lisee_Intercondyl_average_mm_thickness"] = pixels_to_mm(lisee_central_average_thickness_pixles)
+
+    results_dict["lisee_medial_pixels"] = lisee_medial_roi_polygon.area
+    results_dict["lisee_lateral_pixels"] = lisee_lateral_roi_polygon.area
+    results_dict["lisee_central_pixels"] = lisee_central_roi_polygon.area
+
+    results_dict["lisee_medial_area_mm"] = lisee_medial_roi_polygon.area * (pixels_to_mm(1) ** 2)
+    results_dict["lisee_lateral_area_mm"] = lisee_lateral_roi_polygon.area * (pixels_to_mm(1) ** 2)
+    results_dict["lisee_central_area_mm"] = lisee_central_roi_polygon.area * (pixels_to_mm(1) ** 2)
+
+    results_dict["lisee_medial_average_thickness_pixles"]  = lisee_medial_average_thickness_pixles 
+    results_dict["lisee_lateral_average_thickness_pixles"] = lisee_lateral_average_thickness_pixles
+    results_dict["lisee_central_average_thickness_pixles"] = lisee_central_average_thickness_pixles
+
     # TODO: add echo intensity
     rotated_image_array = np.array(rotated_image)
     third: float = 1.0 / 3.0
@@ -152,6 +144,12 @@ def FTC_analysis(
     rotated_image_array_gryscl_width: int = rotated_image_array_gryscl.shape[0]
     rotated_image_array_gryscl_height: int = rotated_image_array_gryscl.shape[1]
 
+
+    results_dict["lisee_medial_ei"] = get_average_ei(
+        image_width=rotated_image_array_gryscl_width,
+        image_height=rotated_image_array_gryscl_height,
+        polygon=lisee_medial_roi_polygon,
+        image_array=rotated_image_array_gryscl)
 
     results_dict["lisee_lateral_ei"] = get_average_ei(
         image_width=rotated_image_array_gryscl_width,
@@ -165,13 +163,17 @@ def FTC_analysis(
         polygon=lisee_central_roi_polygon,
         image_array=rotated_image_array_gryscl)
 
-    results_dict["lisee_medial_ei"] = get_average_ei(
-        image_width=rotated_image_array_gryscl_width,
-        image_height=rotated_image_array_gryscl_height,
-        polygon=lisee_medial_roi_polygon,
-        image_array=rotated_image_array_gryscl)
 
-    return results_dict
+    # visualize image
+    plt.ioff()
+    fig, ax = plt.subplots()
+    ax.imshow(rotated_image)
+    colors = ["red", "green", "blue"]
+    for i, polygon in enumerate(lisee_polygons):
+            plot_polygon(polygon=polygon, ax=ax, color=colors[i])
+
+     
+    return results_dict, fig
     
 
 

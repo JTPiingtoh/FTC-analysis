@@ -6,7 +6,7 @@ import tkinter as tk
 from tkinter import filedialog
 from tifffile import TiffFile, TiffFileError
 from roifile import ImagejRoi
-from ftc_analysis import FTC_analysis 
+from ftc_helpers.ftc_analysis import FTC_analysis 
 import matplotlib.pyplot as plt
 
 def get_folder_directory():
@@ -76,14 +76,14 @@ if __name__ == "__main__":
                 image_array = tif.pages[0].asarray()
                 roi_bytes = tif.imagej_metadata['ROI'] 
                 roi = ImagejRoi.frombytes(roi_bytes)
-                FTC_results_dict = FTC_analysis(image_array=image_array, roi=roi)
+                FTC_results_dict, FTC_img = FTC_analysis(image_array=image_array, roi=roi)
                 FTC_results_dict["image_name"] = filename
                 results_list.append(FTC_results_dict)
 
                 analysed_image_path = os.path.join(anaylsed_images_dir, f"{filename} ANALYSED{extension}").replace('\\', '/')
           
-                FTC_results_dict["img"].savefig(analysed_image_path)
-                plt.close(FTC_results_dict["img"])
+                FTC_img.savefig(analysed_image_path)
+                plt.close(FTC_img)
 
             except KeyError as e:
                 print(f"{filename}: {e}")
