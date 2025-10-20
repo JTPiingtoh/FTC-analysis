@@ -8,16 +8,15 @@ from shapely.plotting import plot_polygon
 
 import matplotlib.pyplot as plt
 
+from ftc_helpers.midpoint_lobf import roi_midpoint_lobf
+from ftc_helpers.midpoint_from_algo import roi_midpoint_from_algo
+from ftc_helpers.roi_rotate import rotate_image_and_roi
+from ftc_helpers.roi_trim import trim_roi_coords_roi_based
+from ftc_helpers.conversions import pixels_to_mm
 
-from midpoint_lobf import roi_midpoint_lobf
-from midpoint_from_algo import roi_midpoint_from_algo
-from roi_rotate import rotate_image_and_roi
-from roi_trim import trim_roi_coords_roi_based
-from conversions import pixels_to_mm
-
-from hori import get_hori_csa_px, get_hori_central_thickness_px, get_hori_coords_thickness
-from lisee import lisee_CSA_polygon_function, lisee_zone_average_thickness
-from lisee_EI import get_average_ei
+from ftc_helpers.hori import get_hori_csa_px, get_hori_central_thickness_px, get_hori_coords_thickness
+from ftc_helpers.lisee import lisee_CSA_polygon_function, lisee_zone_average_thickness
+from ftc_helpers.lisee_EI import get_average_ei
 
 # BUG: Trim factors above 0.25 appears to break midpoint_lobf, which in turn
 # breaks lisee_roi_polygon, likely due to too much of the of the roi being trimmed.

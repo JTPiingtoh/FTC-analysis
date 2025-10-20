@@ -5,6 +5,7 @@ old_code
 test_code
 test_images
 check_platform.py
+plan.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

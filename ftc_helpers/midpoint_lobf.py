@@ -10,7 +10,6 @@ from shapely.plotting import plot_line, plot_polygon
 from typing import Literal
 from PIL import Image
 
-from roi_rotate import rotate_image_and_roi
 
 
 def closest_to(
@@ -57,6 +56,8 @@ def roi_midpoint_lobf(
 
 
 if __name__ == "__main__":
+    from ftc_helpers.roi_rotate import rotate_image_and_roi
+    
     with TiffFile('14_annotated_with_border.tif') as tif:
         
         image = tif.pages[0].asarray()

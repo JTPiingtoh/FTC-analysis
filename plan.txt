@@ -1,5 +1,0 @@
-https://github.com/dwaithe/ijpython_roi
-https://imagej.net/ij/developer/source/ij/io/RoiDecoder.java.html
-
-
-# convert java code to python to obtain freehand ROI

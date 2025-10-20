@@ -27,9 +27,10 @@ def get_folder_directory():
 
 if __name__ == "__main__":
     
+
     input_directory = get_folder_directory()
 
-    # TODO: check if any files are tiffs
+
 
     if input_directory:
         
@@ -51,61 +52,64 @@ if __name__ == "__main__":
             exit()
 
 
-    results_list = []
+        results_list = []
 
-    '''
-    07/02/2025 - Improved path strings, should resolve permission error alongside writing to csv. If this code still break, use os.chmod 664
-    '''
+        '''
+        07/02/2025 - Improved path strings, should resolve permission error alongside writing to csv. If this code still break, use os.chmod 664
+        '''
 
 
-    for file in os.listdir(input_directory):
+        for file in os.listdir(input_directory):
 
-        image_path = os.path.join(input_directory, file).replace('\\', '/')
-        
-        filename, extension = os.path.splitext(file)
-
-        # Attempt to open tiff file TODO: List non tif files in dir
-        if not extension.lower() in ('.tif', 'tiff'):
-            print(f"{file} is not a tif file.")
-            continue
+            image_path = os.path.join(input_directory, file).replace('\\', '/')
             
-        # Attempt to parse ROI
-        with TiffFile(image_path) as tif:
-            try:          
-                print(filename)
-                image_array = tif.pages[0].asarray()
-                roi_bytes = tif.imagej_metadata['ROI'] 
-                roi = ImagejRoi.frombytes(roi_bytes)
-                FTC_results_dict, FTC_img = FTC_analysis(image_array=image_array, roi=roi)
-                FTC_results_dict["image_name"] = filename
-                results_list.append(FTC_results_dict)
+            filename, extension = os.path.splitext(file)
 
-                analysed_image_path = os.path.join(anaylsed_images_dir, f"{filename} ANALYSED{extension}").replace('\\', '/')
-          
-                FTC_img.savefig(analysed_image_path)
-                plt.close(FTC_img)
-
-            except KeyError as e:
-                print(f"{filename}: {e}")
-                continue 
-            except ValueError as e:
-                print(f"{filename}: {e}")
-                continue 
-            except RuntimeError as e:
-                print(f"{filename}: {e}")
-                continue 
-            except TiffFileError as e:
-                print(f"{filename}: {e}")
+            # Attempt to open tiff file TODO: List non tif files in dir
+            if not extension.lower() in ('.tif', 'tiff'):
+                print(f"{file} is not a tif file.")
                 continue
+                
+            # Attempt to parse ROI
+            with TiffFile(image_path) as tif:
+                try:          
+                    print(filename)
+                    image_array = tif.pages[0].asarray()
+                    roi_bytes = tif.imagej_metadata['ROI'] 
+                    roi = ImagejRoi.frombytes(roi_bytes)
+                    FTC_results_dict, FTC_img = FTC_analysis(image_array=image_array, roi=roi)
+                    FTC_results_dict["image_name"] = filename
+                    results_list.append(FTC_results_dict)
 
-        
-    results_df = pd.DataFrame(results_list)
-    csv_file_path = os.path.join(output_dir, f"{input_file_name} ANALYSED.csv").replace('\\', '/')
-    results_df.to_csv(csv_file_path, index=False)
+                    analysed_image_path = os.path.join(anaylsed_images_dir, f"{filename} ANALYSED.png").replace('\\', '/')
+            
+                    FTC_img.savefig(analysed_image_path)
+                    plt.close(FTC_img)
 
-    # open the output dir (WINDOWS ONLY)
-    if platform.system() == 'Windows':
-        os.startfile(output_base_dir)
+                except KeyError as e:
+                    print(f"{filename}: {e}")
+                    continue 
+                except ValueError as e:
+                    print(f"{filename}: {e}")
+                    continue 
+                except RuntimeError as e:
+                    print(f"{filename}: {e}")
+                    continue 
+                except TiffFileError as e:
+                    print(f"{filename}: {e}")
+                    continue
+
+            
+        results_df = pd.DataFrame(results_list)
+        csv_file_path = os.path.join(output_dir, f"{input_file_name} ANALYSED.csv").replace('\\', '/')
+        results_df.to_csv(csv_file_path, index=False)
+
+        # open the output dir (WINDOWS ONLY)
+        if platform.system() == 'Windows':
+            os.startfile(output_base_dir)
+    
+    else:
+        print("Program finished without analysis")
 
 
         
