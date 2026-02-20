@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 from PIL import Image
 
@@ -18,6 +20,8 @@ from ftc_helpers.hori import get_hori_csa_px, get_hori_central_thickness_px, get
 from ftc_helpers.lisee import lisee_CSA_polygon_function, lisee_zone_average_thickness
 from ftc_helpers.lisee_EI import get_average_ei
 
+logger = logging.getLogger("__main__")
+
 # BUG: Trim factors above 0.25 appears to break midpoint_lobf, which in turn
 # breaks lisee_roi_polygon, likely due to too much of the of the roi being trimmed.
 # For trim factors greater than 0.25, algorithic detection of midpoint will be needed instead.
@@ -28,6 +32,7 @@ from ftc_helpers.lisee_EI import get_average_ei
 def FTC_analysis(
         image_array: ArrayLike, 
         roi: ImagejRoi,
+        filename: str,
         **kwargs
         ) -> dict:
 
@@ -47,9 +52,6 @@ def FTC_analysis(
 
     rotated_image, rotated_roi_coords = rotate_image_and_roi(image=Image.fromarray(image_array), roi=roi)
 
-    results_dict = {}
-    # results_dict["img"] = rotated_image # return image for visualisation
-
     trimmed_roi_coords = trim_roi_coords_roi_based(
     roi_coords_x=rotated_roi_coords[:,0], # every column of the first row
     roi_coords_y=rotated_roi_coords[:,1],
@@ -59,7 +61,8 @@ def FTC_analysis(
     trim_factor=0.25
     )
 
-    # TODO: add check for midpoint
+    # TODO: add check for midpoint#
+    # FOR LOGGING ONLY
     trimmed_roi_lobf_mid_x = roi_midpoint_lobf(
         roi_coords_x=trimmed_roi_coords[0],
         roi_coords_y=trimmed_roi_coords[1],
@@ -71,7 +74,10 @@ def FTC_analysis(
         roi_coords_y=trimmed_roi_coords[1]
     )
 
+    # if abs(trimmed_roi_lobf_mid_x - trimmed_roi_algo_mid_x) / (abs(left - right)) > 0.1:
+    #     logger.info(f"Review {filename}. Program found potential discrepency with ROI midpoint.")
 
+    logger.info(f"lobf / algo {abs(trimmed_roi_lobf_mid_x - trimmed_roi_algo_mid_x) / (abs(left - right))}")
 
     hori_coords, hori_ML_thicknesses = get_hori_coords_thickness(
         roi_coords_x=trimmed_roi_coords[0], # every column of the first row
@@ -97,7 +103,11 @@ def FTC_analysis(
         roi_coords_y=trimmed_roi_coords[1],
         roi_mid_x=trimmed_roi_algo_mid_x,   
         )
-    
+
+    results_dict = {}
+
+    results_dict["Image name"] = filename
+
     results_dict["Hori_medial_thickness_mm"] = pixels_to_mm(hori_medial_thickness_px)
     results_dict["Hori_lateral_thickness_mm"] = pixels_to_mm(hori_lateral_thickness_px)
     results_dict["Hori_central_thickness_mm"] = pixels_to_mm(hori_central_thickness_px)
@@ -110,8 +120,6 @@ def FTC_analysis(
         roi_coords_y=trimmed_roi_coords[1],
         roi_mid_x=trimmed_roi_algo_mid_x   
     )
-    
-
 
     lisee_lateral_roi_polygon, lisee_central_roi_polygon, lisee_medial_roi_polygon = lisee_polygons
     lisee_lateral_average_thickness_pixles = lisee_zone_average_thickness(lisee_zone=lisee_lateral_roi_polygon)
@@ -139,10 +147,8 @@ def FTC_analysis(
     third: float = 1.0 / 3.0
 
     rotated_image_array_gryscl = np.dot(rotated_image_array[..., :3], [third,third,third]) # remove alpha, dot product rgb channels
-
     rotated_image_array_gryscl_width: int = rotated_image_array_gryscl.shape[0]
     rotated_image_array_gryscl_height: int = rotated_image_array_gryscl.shape[1]
-
 
     results_dict["lisee_medial_ei"] = get_average_ei(
         image_width=rotated_image_array_gryscl_width,
@@ -162,7 +168,6 @@ def FTC_analysis(
         polygon=lisee_central_roi_polygon,
         image_array=rotated_image_array_gryscl)
 
-
     # visualize image
     plt.ioff()
     fig, ax = plt.subplots()
@@ -171,14 +176,9 @@ def FTC_analysis(
     for i, polygon in enumerate(lisee_polygons):
             plot_polygon(polygon=polygon, ax=ax, color=colors[i])
 
-     
     return results_dict, fig
     
 
-
-'''
-For testing only
-'''
 if __name__ == "__main__":
     with TiffFile('14_annotated_with_border.tif') as tif:
         
