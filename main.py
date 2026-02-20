@@ -32,26 +32,26 @@ def get_folder_directory():
 if __name__ == "__main__":    
 
     input_directory = get_folder_directory()
-    logger = logging.getLogger(__name__)
 
     if input_directory:
 
         # Create new folder to store Excel/csv and analysed images
         input_file_name = os.path.basename(input_directory)
         output_base_dir = os.path.dirname(input_directory)
-        output_dir = os.path.join(output_base_dir, f"{input_file_name} OUTPUTS - {datetime.now().strftime("%Y-%m-%d %H-%M-%S")}").replace('\\', '/')
+        output_dir = os.path.join(output_base_dir, f"{input_file_name} OUTPUTS - {datetime.now().strftime('%Y-%m-%d %H-%M-%S')}").replace('\\', '/')
         
         
         try:
             os.makedirs(output_dir)
-            anaylsed_images_dir = os.path.join(output_dir, f"{input_file_name} ANALYSED IMAGES")        
-            os.makedirs(anaylsed_images_dir)
+            analysed_images_dir = os.path.join(output_dir, f"{input_file_name} ANALYSED IMAGES")        
+            os.makedirs(analysed_images_dir, exist_ok=True)
             logging_file_name = os.path.join(output_dir, "analysis_log.log")
             logging.basicConfig(
                 filename=logging_file_name,
                 level=logging.INFO
             )
 
+            logger= logging.getLogger(__name__)
         except OSError as e:
             print(f"Fatal error setting up output files: {e}")
             print("Terminating program.")
@@ -71,7 +71,7 @@ if __name__ == "__main__":
             filename, extension = os.path.splitext(file)
 
             # Attempt to open tiff file TODO: List non tif files in dir
-            if not extension.lower() in ('.tif', 'tiff'):
+            if extension.lower() not in ('.tif', '.tiff'):
                 logger.info(f"{file} is not a .tiff file. Analysis was skipped")
                 continue
                 
@@ -83,7 +83,7 @@ if __name__ == "__main__":
                     roi = ImagejRoi.frombytes(roi_bytes)
                     FTC_results_dict, FTC_img = FTC_analysis(image_array=image_array, roi=roi, filename=filename)
                     results_list.append(FTC_results_dict)
-                    analysed_image_path = os.path.join(anaylsed_images_dir, f"{filename} ANALYSED.png").replace('\\', '/')
+                    analysed_image_path = os.path.join(analysed_images_dir, f"{filename} ANALYSED.png").replace('\\', '/')
                     FTC_img.savefig(analysed_image_path)
                     plt.close(FTC_img)
                     n_files_analysed += 1
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         logger.info(f"Files analysed: {n_files_analysed}/{n_files}")
         # open the output dir (WINDOWS ONLY)
         if platform.system() == 'Windows':
-            os.startfile(output_base_dir)
+            os.startfile(output_dir)
 
     
     else:
