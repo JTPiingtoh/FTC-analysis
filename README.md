@@ -12,6 +12,7 @@ The script splits the region of interest is shown, with the medial, intercondyl,
 ## Cloning the repo 
 ```bash
 $ git clone https://github.com/JTPiingtoh/FTC-analysis.git
+$ cd FTC-analysis
 $ python -m venv .venv
 $ pip install -r "requirements.txt"
 ```
