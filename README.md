@@ -14,11 +14,12 @@ The script splits the region of interest is shown, with the medial, intercondyl,
 $ git clone https://github.com/JTPiingtoh/FTC-analysis.git
 $ cd FTC-analysis
 $ python -m venv .venv
-$ pip install -r "requirements.txt"
+$ .venv/scripts/activate
+(.venv) $ pip install -r "requirements.txt"
 ```
 ## Running the program
 ```
-$ python main.py 
+(.venv) $ python main.py 
 ```
 This will open your machine's file explorer. Select the folder containing your annotated .tiff images.
 
