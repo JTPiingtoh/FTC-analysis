@@ -98,12 +98,6 @@ if __name__ == "__main__":
                 except TiffFileError as e:
                     logging.info(f"{filename} has invalid stucture: {e}")
                     continue
-                except KeyError as e:
-                    logging.info(f"{filename}: {e}")
-                    continue 
-                except ValueError as e:
-                    logging.info(f"{filename}: {e}")
-                    continue 
                 except RuntimeError as e:
                     logging.info(f"{filename}: {e}")
                     continue 
