@@ -103,6 +103,7 @@ if __name__ == "__main__":
                     continue 
                 except Exception as e:
                     logging.exception((f"{filename}: {e}"))
+                    continue
                 
 
         results_df = pd.DataFrame(results_list)

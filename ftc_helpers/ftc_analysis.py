@@ -77,7 +77,7 @@ def FTC_analysis(
     # if abs(trimmed_roi_lobf_mid_x - trimmed_roi_algo_mid_x) / (abs(left - right)) > 0.1:
     #     logger.info(f"Review {filename}. Program found potential discrepency with ROI midpoint.")
 
-    logger.info(f"lobf / algo {abs(trimmed_roi_lobf_mid_x - trimmed_roi_algo_mid_x) / (abs(left - right))}")
+    logger.info(f"{filename}: lobf / algo {abs(trimmed_roi_lobf_mid_x - trimmed_roi_algo_mid_x) / (abs(left - right))}")
 
     hori_coords, hori_ML_thicknesses = get_hori_coords_thickness(
         roi_coords_x=trimmed_roi_coords[0], # every column of the first row
@@ -240,8 +240,6 @@ if __name__ == "__main__":
         # print(f'Central av thickness: {results["lisee_lateral_average_thickness_mm"]}')
 
         for i, polygon in enumerate(lisee_polygons):
-            plot_polygon(polygon=polygon, ax=ax, color=colors[i])
-
-        
+            plot_polygon(polygon=polygon, ax=ax, color=colors[i])       
 
         plt.show()
