@@ -69,7 +69,7 @@ if __name__ == "__main__":
         n_files_analysed = 0
         print("Starting anaylsis")
         for file in tqdm(files_to_analyse):
-
+            
             image_path = os.path.join(input_directory, file).replace('\\', '/')
             filename, extension = os.path.splitext(file)
 

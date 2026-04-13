@@ -4,7 +4,8 @@ from PIL import Image
 
 from roifile import ImagejRoi
 from tifffile import TiffFile
-from shapely import Polygon, LineString
+from shapely import Polygon, LineString, errors
+from shapely.plotting import plot_polygon
 import matplotlib.pyplot as plt
 
 from ftc_helpers.midpoint_from_algo import roi_midpoint_from_algo
@@ -199,10 +200,18 @@ def get_side_polygon(
             (top_coord[1] - bottom_coord[1]) 
     )
 
-    inveted_c = top_coord[0] - top_coord[1] * dx_dy
+    inverted_c = top_coord[0] - top_coord[1] * dx_dy
 
-    top_intercept_x = dx_dy * image_height + inveted_c
-    bottom_intercept_x = inveted_c
+    top_intercept_x = dx_dy * image_height + inverted_c
+    bottom_intercept_x = inverted_c
+
+    # if top intercept x is greater than image width, change intercept x to width,
+    # and height to where the line would interect
+
+    if top_intercept_x > image_width:
+        
+        image_height =  (image_width - inverted_c) * (1 / dx_dy) 
+        top_intercept_x = image_width
 
     if side == "medial":
         return Polygon(
@@ -259,6 +268,14 @@ def get_hori_csa_px(
         bottom_coord=hori_lateral_bottom_coord,
         side="lateral"
     )
+
+    
+    # fig, ax = plt.subplots()
+    # # ax.imshow(rotated_image)
+    # plot_polygon(medial_region, ax=ax)
+    # plot_polygon(lateral_region, ax=ax)
+    # plot_polygon(roi, ax=ax)
+    # plt.show()
 
     medial_area_cut = medial_region.intersection(roi).area
     lareal_area_cut = lateral_region.intersection(roi).area
