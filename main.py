@@ -1,8 +1,10 @@
 import os
+import sys
 import platform
 import tkinter as tk
 from tkinter import filedialog
 import logging
+from typing import Any
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -50,12 +52,13 @@ if __name__ == "__main__":
                 filename=logging_file_name,
                 level=logging.INFO
             )
-
-            logger= logging.getLogger(__name__)
+            logger = logging.getLogger(__name__)
+        
         except OSError as e:
             print(f"Fatal error setting up output files: {e}")
             print("Terminating program.")
             os.removedirs(output_dir)
+            sys.exit(0)
 
         results_list = []
         # 07/02/2025 - Improved path strings, should resolve permission error alongside writing to csv. 
@@ -79,7 +82,11 @@ if __name__ == "__main__":
             with TiffFile(image_path) as tif:
                 try:          
                     image_array = tif.pages[0].asarray()
-                    roi_bytes = tif.imagej_metadata['ROI'] 
+                    metadata: dict[str , Any] | None = tif.imagej_metadata
+                    if not metadata:
+                        logger.info(f"{file} does not have any metadata")
+                        continue
+                    roi_bytes: bytes  = metadata['ROI'] 
                     roi = ImagejRoi.frombytes(roi_bytes)
                     FTC_results_dict, FTC_img = FTC_analysis(image_array=image_array, roi=roi, filename=filename)
                     results_list.append(FTC_results_dict)
@@ -87,7 +94,10 @@ if __name__ == "__main__":
                     FTC_img.savefig(analysed_image_path)
                     plt.close(FTC_img)
                     n_files_analysed += 1
-
+                
+                except TiffFileError as e:
+                    logging.info(f"{filename} has invalid stucture: {e}")
+                    continue
                 except KeyError as e:
                     logging.info(f"{filename}: {e}")
                     continue 
@@ -97,9 +107,9 @@ if __name__ == "__main__":
                 except RuntimeError as e:
                     logging.info(f"{filename}: {e}")
                     continue 
-                except TiffFileError as e:
-                    logging.info(f"{filename} has invalid stucture: {e}")
-                    continue
+                except Exception as e:
+                    logging.exception((f"{filename}: {e}"))
+                
 
         results_df = pd.DataFrame(results_list)
         csv_file_path = os.path.join(output_dir, f"{input_file_name} ANALYSED.csv").replace('\\', '/')
