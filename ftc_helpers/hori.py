@@ -192,8 +192,7 @@ def get_side_polygon(
     side: str   
 ):
     
-    assert side in ["medial", "lateral"
-    ""]
+    assert side in ["medial", "lateral"]
     dx_dy = (
             (top_coord[0] - bottom_coord[0]) 
             / 
@@ -210,8 +209,13 @@ def get_side_polygon(
 
     if top_intercept_x > image_width:
         
-        image_height =  (image_width - inverted_c) * (1 / dx_dy) 
+        image_height = (image_width - bottom_intercept_x) * (1 / dx_dy) 
         top_intercept_x = image_width
+    
+    elif top_intercept_x < 0:
+        image_height = bottom_intercept_x * - (1 / dx_dy) 
+        top_intercept_x = 0
+
 
     if side == "medial":
         return Polygon(
